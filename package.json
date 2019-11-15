@@ -1,0 +1,53 @@
+{
+  "name": "@themost/memory",
+  "version": "1.0.0-dev.1",
+  "description": "MOST Web Framework Codename Blueshift in-meory data adapter",
+  "main": "dist/themost_memory.js",
+  "scripts": {
+    "test": "jasmine",
+    "build": "rollup -c ./rollup.config.js -m",
+    "watch": "rollup -c ./rollup.config.js -m -w"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kbarbounakis/themost-memory.git"
+  },
+  "keywords": [
+    "data",
+    "adapter",
+    "memory",
+    "themost",
+    "orm"
+  ],
+  "author": "Kyriakos Barbounakis<k.barbounakis@gmail.com>",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/kbarbounakis/themost-memory/issues"
+  },
+  "homepage": "https://github.com/kbarbounakis/themost-memory#readme",
+  "peerDependencies": {
+    "@themost/common": "^2.3.2",
+    "@themost/query": "^2.3.2"
+  },
+  "devDependencies": {
+    "@babel/core": "^7.7.2",
+    "@babel/plugin-proposal-class-properties": "^7.1.0",
+    "@babel/plugin-proposal-decorators": "^7.1.0",
+    "@babel/plugin-proposal-export-default-from": "^7.0.0",
+    "@babel/plugin-proposal-export-namespace-from": "^7.0.0",
+    "@babel/plugin-transform-async-to-generator": "^7.1.0",
+    "@babel/plugin-transform-runtime": "^7.6.2",
+    "@babel/polyfill": "^7.6.0",
+    "@babel/preset-env": "^7.1.6",
+    "@babel/register": "^7.0.0",
+    "@babel/runtime": "^7.6.3",
+    "jasmine": "^3.5.0",
+    "jasmine-spec-reporter": "^4.2.1",
+    "rollup": "^1.27.0",
+    "rollup-plugin-auto-external": "^2.0.0",
+    "rollup-plugin-babel": "^4.3.3",
+    "rollup-plugin-commonjs": "^10.0.1",
+    "rollup-plugin-dts": "^1.1.10",
+    "rollup-plugin-node-resolve": "^5.2.0"
+  }
+}
