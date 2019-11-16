@@ -9,5 +9,6 @@
  *
  */
 export declare class MemoryContainer {
+    constructor(containerName: string);
     getCollection(name: string): any;
 }

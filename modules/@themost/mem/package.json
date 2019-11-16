@@ -1,0 +1,34 @@
+{
+  "name": "@themost/mem",
+  "version": "1.0.0-dev.1",
+  "description": "MOST Web Framework Codename Blueshift in-memory data adapter",
+  "main": "dist/themost_memory.js",
+  "scripts": {
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kbarbounakis/themost-memory.git"
+  },
+  "keywords": [
+    "data",
+    "adapter",
+    "memory",
+    "themost",
+    "orm"
+  ],
+  "author": "Kyriakos Barbounakis<k.barbounakis@gmail.com>",
+  "license": "BSD-3-Clause",
+  "bugs": {
+    "url": "https://github.com/kbarbounakis/themost-memory/issues"
+  },
+  "homepage": "https://github.com/kbarbounakis/themost-memory#readme",
+  "peerDependencies": {
+    "@themost/common": "^2.3.2",
+    "@themost/query": "^2.3.2"
+  },
+  "devDependencies": {
+  },
+  "dependencies": {
+    "sql.js": "^1.0.1"
+  }
+}

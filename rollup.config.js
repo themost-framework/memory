@@ -4,11 +4,11 @@ import rollupCommon from 'rollup-plugin-commonjs';
 import autoExternal from 'rollup-plugin-auto-external';
 import dts from "rollup-plugin-dts";
 
-const dist = './dist/';
+const dist = './modules/@themost/mem/dist/';
 const name = 'themost_memory';
 
 module.exports = [{
-    input: './src/index.js',
+    input: './modules/@themost/mem/src/index.js',
     output: [
         {
             file: `${dist}${name}.cjs.js`,
@@ -25,13 +25,15 @@ module.exports = [{
         }
     ],
     plugins: [
-        rollupBabel(),
+        rollupBabel({
+            exclude: [/\/node_modules\//]
+        }),
         rollupResolve(),
         rollupCommon(),
         autoExternal()
     ]
 }, {
-    input: './src/index.d.ts',
+    input: './modules/@themost/mem/src/index.d.ts',
     output: [ { file: `${dist}${name}.d.ts`, format: "es" } ],
     plugins: [dts()],
 }];
