@@ -29,6 +29,7 @@
   "devDependencies": {
   },
   "dependencies": {
-    "sql.js": "^1.0.1"
+    "sql.js": "^1.0.1",
+    "async": "^2.6.3"
   }
 }
