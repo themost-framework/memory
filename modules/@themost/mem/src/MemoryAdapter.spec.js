@@ -154,4 +154,46 @@ describe('MemoryAdapter', ()=> {
       await adapter.closeAsync();
    });
 
+
+   it('should MemoryAdapter.table().hasSequence()', async () => {
+      const adapter = new MemoryAdapter({
+         name: 'memory-db'
+      });
+      await adapter.openAsync();
+      let exists = await adapter.table('Table1').existsAsync();
+      expect(exists).toBeFalsy();
+      await adapter.migrateAsync({
+         model: 'Table1',
+         appliesTo: 'Table1',
+         version: '1.0',
+         add: [
+            {
+               name: 'id',
+               primary: true,
+               type: 'Counter'
+            },
+            {
+               name: 'name',
+               nullable: false,
+               type: 'Text'
+            }
+         ]
+      });
+      exists = await adapter.table('Table1').existsAsync();
+      expect(exists).toBeTruthy();
+
+      await adapter.executeAsync(`INSERT INTO Table1(name) VALUES ('apple')`);
+      let lastId = await adapter.lastIdentityAsync();
+      expect(lastId).toBeTruthy();
+
+      let hasSequence = await adapter.table('Table1').hasSequenceAsync();
+      expect(hasSequence).toBeTruthy();
+
+      await adapter.executeAsync('DROP TABLE `Table1`');
+      // drop migrations
+      await adapter.executeAsync('DROP TABLE `migrations`');
+      MemoryAdapter.supportMigrations = false;
+      await adapter.closeAsync();
+   });
+
 });
