@@ -1,11 +1,12 @@
 {
   "spec_dir": "spec",
   "spec_files": [
-    "**/*[sS]pec.js"
+    "../modules/@themost/mem/src/**/*[sS]pec.js"
   ],
   "helpers": [
-    "helpers/**/*.js"
+    "./helpers/**/*.js"
   ],
   "stopSpecOnExpectationFailure": false,
-  "random": true
+  "random": false,
+  "timeout": 30000
 }

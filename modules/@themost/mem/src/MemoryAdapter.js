@@ -5,8 +5,8 @@
  * Use of this source code is governed by an BSD-3-Clause license that can be
  * found in the LICENSE file at https://themost.io/license
  */
-import * as initSqlJs from 'sql.js';
-import {SqlUtils, QueryExpression} from '@themost/query';
+import initSqlJs from 'sql.js';
+import {SqlUtils, QueryExpression, QueryField} from '@themost/query';
 import {MemoryFormatter} from './MemoryFormatter';
 import {TraceUtils} from '@themost/common';
 import {eachSeries, waterfall} from 'async';
@@ -16,6 +16,7 @@ import {eachSeries, waterfall} from 'async';
 export class MemoryAdapter {
 
     constructor(options) {
+        // noinspection JSUnusedGlobalSymbols
         /**
          * @type {{database: string}}
          */
@@ -27,13 +28,18 @@ export class MemoryAdapter {
         this.rawConnection = null;
     }
 
+    /**
+     * Opens database connection
+     * @param {AdapterExecuteCallback} callback
+     * @returns {*}
+     */
     open(callback) {
         const self = this;
         callback = callback || function() {};
         if (self.rawConnection) {
             return callback();
         }
-        return initSqlJs.then( SQL => {
+        return initSqlJs().then( SQL => {
             self.rawConnection = new SQL.Database();
             return callback();
         }).catch( err => {
@@ -41,6 +47,27 @@ export class MemoryAdapter {
         });
     }
 
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Opens database connection
+     * @returns {Promise<*>}
+     */
+    openAsync() {
+        return new Promise((resolve, reject) => {
+            return this.open( err => {
+                if (err) {
+                   return reject(err);
+                }
+                return resolve();
+            })
+        });
+    }
+
+    /**
+     * Closes database connection
+     * @param {AdapterExecuteCallback} callback
+     * @returns {*}
+     */
     close(callback) {
         const self = this;
         callback = callback || function() {};
@@ -51,9 +78,26 @@ export class MemoryAdapter {
         return callback();
     }
 
+    // noinspection JSUnusedGlobalSymbols
     /**
-     * @param {string} query
-     * @param {*=} values
+     * Closes database connection
+     * @returns {Promise<*>}
+     */
+    closeAsync() {
+        return new Promise((resolve, reject) => {
+            return this.close( err => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve();
+            })
+        });
+    }
+
+    /**
+     * Prepares a query expression with the specified parameters
+     * @param {string} query - A parameterized query expression e.g. SELECT * FROM Table1 WHERE status = ?
+     * @param {Array<*>=} values - An array of parameters
      */
     prepare(query, values) {
         return SqlUtils.format(query,values);
@@ -128,13 +172,14 @@ export class MemoryAdapter {
 
     /**
      * Begins a transactional operation by executing the given function
-     * @param fn {function} The function to execute
-     * @param callback {function(Error=)} The callback that contains the error -if any- and the results of the given operation
+     * @param {TransactionFunctionCallback} fn The function to execute
+     * @param {AdapterExecuteCallback} callback The callback that contains the error -if any- and the results of the given operation
      */
     executeInTransaction(fn, callback) {
         const self = this;
         //ensure parameters
-        fn = fn || function() {}; callback = callback || function() {};
+        fn = fn || function() {};
+        callback = callback || function() {};
         self.open(function(err) {
             if (err) {
                 callback(err);
@@ -177,18 +222,52 @@ export class MemoryAdapter {
         });
     }
 
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Begins a transactional operation by executing the given function
+     * @param {TransactionFunction} transactionFunc
+     * @returns {Promise<void>}
+     */
+    executeInTransactionAsync(transactionFunc) {
+        return new Promise((resolve, reject) => {
+           this.executeInTransaction((cb) => {
+               transactionFunc.bind(this)().then(() => {
+                   return cb();
+               }).catch( err => {
+                   return cb(err);
+               });
+           }, ((error) => {
+               if (error) {
+                   return reject(error);
+               }
+               return resolve();
+           }));
+        });
+    }
+
+    // noinspection JSUnusedGlobalSymbols
     /**
      *
      * @param {string} name
-     * @param {QueryExpression|*} query
-     * @param {function(Error=)} callback
+     * @param {*} query
+     * @param {AdapterExecuteCallback} callback
      */
     createView(name, query, callback) {
-        this.view(name).create(query, callback);
+        return this.view(name).create(query, callback);
+    }
+
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * A shortcut method of MemoryAdapter.view().create()
+     * @param {string} name
+     * @param {*} query
+     */
+    createViewAsync(name, query) {
+        return this.view(name).createAsync(query);
     }
 
     /*
-     * @param {DataModelMigration|*} obj An Object that represents the data model scheme we want to migrate
+     * @param {MemoryAdapterMigration} obj An Object that represents the data model scheme we want to migrate
      * @param {function(Error=)} callback
      */
     migrate(obj, callback) {
@@ -215,9 +294,8 @@ export class MemoryAdapter {
         waterfall([
             //1. Check migrations table existence
             function(cb) {
-                if (SqliteAdapter.supportMigrations) {
-                    cb(null, true);
-                    return;
+                if (MemoryAdapter.supportMigrations) {
+                    return cb(null, true);
                 }
                 self.table('migrations').exists(function(err, exists) {
                     if (err) { cb(err); return; }
@@ -232,7 +310,7 @@ export class MemoryAdapter {
                     '"appliesTo" TEXT NOT NULL, "model" TEXT NULL, "description" TEXT,"version" TEXT NOT NULL)',
                     [], function(err) {
                         if (err) { cb(err); return; }
-                        SqliteAdapter.supportMigrations=true;
+                        MemoryAdapter.supportMigrations = true;
                         cb(null, 0);
                     });
             },
@@ -307,6 +385,7 @@ export class MemoryAdapter {
                             for (let i = 0; i < migration.remove.length; i++) {
                                 let x = migration.remove[i];
                                 let colIndex = columns.findIndex( y => {
+                                    // noinspection JSUnresolvedVariable
                                     return y.name === x.name;
                                 });
                                 if (colIndex>=0) {
@@ -332,6 +411,7 @@ export class MemoryAdapter {
                             for (let i = 0; i < migration.change.length; i++) {
                                 let x = migration.change[i];
                                 column = columns.find( y => {
+                                    // noinspection JSUnresolvedVariable
                                     return y.name === x.name;
                                 });
                                 if (column) {
@@ -366,6 +446,7 @@ export class MemoryAdapter {
                         for (let i = 0; i < migration.add.length; i++) {
                             let x = migration.add[i];
                             column = columns.find( y => {
+                                // noinspection JSUnresolvedVariable
                                 return (y.name === x.name);
                             });
                             if (column) {
@@ -460,11 +541,26 @@ export class MemoryAdapter {
 
     }
 
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * @param {MemoryAdapterMigration} migration
+     */
+    migrateAsync(migration) {
+        return new Promise((resolve, reject) => {
+            return this.migrate(migration, (err) => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve();
+            })
+        });
+    }
+
     /**
      * Produces a new identity value for the given entity and attribute.
-     * @param entity {String} The target entity name
-     * @param attribute {String} The target attribute
-     * @param callback {Function=}
+     * @param entity {string} The target entity name
+     * @param attribute {string} The target attribute
+     * @param {AdapterExecuteCallback} callback
      */
     selectIdentity(entity, attribute, callback) {
 
@@ -520,11 +616,34 @@ export class MemoryAdapter {
         });
     }
 
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Produces a new identity value for the given entity and attribute.
+     * @param {string} entity The target entity name
+     * @param {string} attribute The target attribute
+     * @returns Promise<*>
+     */
+    selectIdentityAsync(entity, attribute) {
+        return new Promise((resolve, reject) => {
+            return this.selectIdentity(entity, attribute, (err, result) => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve(result);
+            })
+        });
+    }
+
+    /**
+     * A helper method for managing a database table
+     * @param {string} name
+     * @returns {MemoryAdapterTable}
+     */
     table(name) {
         const self = this;
         return {
             /**
-             * @param {function(Error,Boolean=)} callback
+             * @param {ExistsCallback} callback
              */
             exists:function(callback) {
                 self.execute('SELECT COUNT(*) count FROM sqlite_master WHERE name=? AND type=\'table\';', [name], function(err, result) {
@@ -533,7 +652,20 @@ export class MemoryAdapter {
                 });
             },
             /**
-             * @param {function(Error,string=)} callback
+             * @returns {Promise<boolean>}
+             */
+            existsAsync() {
+                return new Promise((resolve, reject) => {
+                    return this.exists((error, result) => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve(result);
+                    });
+                });
+            },
+            /**
+             * @param {VersionCallback} callback
              */
             version:function(callback) {
                 self.execute('SELECT MAX(version) AS version FROM migrations WHERE appliesTo=?',
@@ -546,22 +678,50 @@ export class MemoryAdapter {
                     });
             },
             /**
-             * @param {function(Error,Boolean=)} callback
+             * @returns {Promise<string>}
              */
-            has_sequence:function(callback) {
+            versionAsync() {
+                return new Promise((resolve, reject) => {
+                    return this.version((error, result) => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve(result);
+                    });
+                });
+            },
+            /**
+             * @param {HasSequenceCallback} callback
+             */
+            hasSequence:function(callback) {
                 callback = callback || function() {};
                 self.execute('SELECT COUNT(*) count FROM sqlite_sequence WHERE name=?',
                     [name], function(err, result) {
-                        if (err) { callback(err); return; }
+                        if (err) {
+                            return callback(err);
+                        }
                         callback(null, (result[0].count>0));
                     });
             },
             /**
-             * @param {function(Error=,Array=)} callback
+             * @returns {Promise<boolean>}
+             */
+            hasSequenceAsync() {
+                return new Promise((resolve, reject) => {
+                    return this.hasSequence((error, result) => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve(result);
+                    });
+                });
+            },
+            /**
+             * @param {ColumnsCallback} callback
              */
             columns:function(callback) {
                 callback = callback || function() {};
-                self.execute('PRAGMA table_info(?)',
+                self.execute(`SELECT c.* from pragma_table_info(?) c;`,
                     [name], function(err, result) {
                         if (err) { callback(err); return; }
                         const arr = [];
@@ -589,17 +749,35 @@ export class MemoryAdapter {
                         result.forEach(iterator);
                         callback(null, arr);
                     });
-            }
+            },
+            /**
+             * @returns {Promise<Array<MemoryAdapterColumn>>}
+             */
+            columnsAsync() {
+                return new Promise((resolve, reject) => {
+                    return this.columns((error, result) => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve(result);
+                    });
+                });
+            },
         };
 
     }
 
+    /**
+     * A helper method for managing a database view
+     * @param {string} name
+     * @returns {MemoryAdapterView}
+     */
     view(name) {
         const self = this;
         const formatter = new MemoryFormatter();
         return {
             /**
-             * @param {function(Error,Boolean=)} callback
+             * @param {ExistsCallback} callback
              */
             exists:function(callback) {
                 self.execute(`SELECT COUNT(*) count FROM sqlite_master WHERE name=? AND type=\'view\';`, [name], function(err, result) {
@@ -608,7 +786,20 @@ export class MemoryAdapter {
                 });
             },
             /**
-             * @param {function(Error=)} callback
+             * @returns {Promise<boolean>}
+             */
+            existsAsync() {
+              return new Promise((resolve, reject) => {
+                 return this.exists((error, result) => {
+                    if (error) {
+                        return reject(error);
+                    }
+                    return resolve(result);
+                 });
+              });
+            },
+            /**
+             * @param {AdapterExecuteCallback} callback
              */
             drop:function(callback) {
                 callback = callback || function() {};
@@ -622,19 +813,39 @@ export class MemoryAdapter {
                 });
             },
             /**
-             * @param {QueryExpression|*} q
-             * @param {function(Error=)} callback
+             * @returns {Promise<void>}
+             */
+            dropAsync() {
+                return new Promise((resolve, reject) => {
+                    return this.drop( error => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve();
+                    });
+                });
+            },
+            /**
+             * @param {*} q
+             * @param {AdapterExecuteCallback} callback
              */
             create:function(q, callback) {
                 const thisArg = this;
-                self.executeInTransaction(function(tr) {
+                self.executeInTransaction( tr => {
                     thisArg.drop(function(err) {
-                        if (err) { tr(err); return; }
+                        if (err) {
+                            return tr(err);
+                        }
                         try {
                             let sql = `CREATE VIEW ${formatter.escapeName(name)} AS `;
                             const formatter = new MemoryFormatter();
                             sql += formatter.format(q);
-                            self.execute(sql, undefined, tr);
+                            return self.execute(sql, null, (error) => {
+                                if (error) {
+                                    return tr(error);
+                                }
+                                return tr();
+                            });
                         }
                         catch(e) {
                             tr(e);
@@ -643,20 +854,36 @@ export class MemoryAdapter {
                 }, function(err) {
                     callback(err);
                 });
-
-            }
+            },
+            /**
+             * @param {*} query
+             * @returns {Promise<void>}
+             */
+            createAsync(query) {
+                return new Promise((resolve, reject) => {
+                    return this.create(query, error => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve();
+                    });
+                });
+            },
         };
     }
 
     /**
      * Executes a query against the underlying database
-     * @param query {QueryExpression|string|*}
-     * @param values {*=}
-     * @param {function(Error=,*=)} callback
+     * @param {*} query
+     * @param {Array<*>=} values
+     * @param {AdapterExecuteCallback} callback
      */
     execute(query, values, callback) {
         const self = this;
-        let sql = null;
+        /**
+         * @type {string}
+         */
+        let sql;
         try {
 
             if (typeof query === 'string') {
@@ -684,53 +911,52 @@ export class MemoryAdapter {
 
                     //prepare statement - the traditional way
                     const prepared = self.prepare(sql, values);
-
-                    let fn;
+                    let results;
+                    let result = [];
                     //validate statement
                     if (/^(SELECT|PRAGMA)/ig.test(prepared)) {
                         //prepare for select
-                        fn = self.rawConnection.all;
+                        try {
+                            /**
+                             * @returns Array<*>
+                             */
+                            results = self.rawConnection.exec(prepared);
+                            // get first result
+                            if (results.length === 0) {
+                                // return an empty array
+                                return callback(null, []);
+                            }
+                            // enumerate values
+                            result = results[0].values.map( x => {
+                                const obj = { };
+                                results[0].columns.forEach( (column, index) => {
+                                    // define property
+                                    Object.defineProperty(obj, column, {
+                                       configurable: true,
+                                       enumerable: true,
+                                       value: x[index]
+                                    });
+                                });
+                                return obj;
+                            });
+                            // and return final result (an array of objects)
+                            return callback(null, result);
+                        }
+                        catch (err) {
+                            return callback(err);
+                        }
                     }
                     else {
-                        //otherwise prepare for run
-                        fn = self.rawConnection.run;
-                    }
-                    //execute raw command
-                    fn.call(self.rawConnection, prepared, [] , function(err, result) {
-                        if (err) {
-                            //log sql
-                            TraceUtils.error(`SQL Error:${prepared}`);
-                            callback(err);
+                        try {
+                            //otherwise prepare for run
+                            self.rawConnection.run(prepared);
+                            return callback();
                         }
-                        else {
-                            if (result) {
-                                if (typeof result === 'object') {
-                                    let keys;
-                                    if (Array.isArray(result)) {
-                                        if (result.length>0) {
-                                            keys = Object.keys(result[0]);
-                                            result.forEach(function(x) {
-                                                keys.forEach(function(y) {
-                                                    if (x[y] === null) { delete x[y]; }
-                                                });
-                                            });
-                                        }
-                                    }
-                                    else {
-                                        keys = Object.keys(result);
-                                        keys.forEach(function(y) {
-                                            if (result[y] === null) { delete result[y]; }
-                                        });
-                                    }
-                                }
-                                return callback(null, result);
-                            }
-                            else {
-                                return callback();
-                            }
+                        catch (err) {
+                            return callback(err);
+                        }
 
-                        }
-                    });
+                    }
                 }
             });
         }
@@ -739,40 +965,85 @@ export class MemoryAdapter {
         }
     }
 
-    lastIdentity(callback) {
-        const self = this;
-        self.open(function(err) {
-            if (err) {
-                callback(err);
-            }
-            else {
-                //execute lastval (for sequence)
-                self.execute('SELECT last_insert_rowid() as lastval', [], function(err, lastval) {
-                    if (err) {
-                        callback(null, { insertId: null });
-                    }
-                    else {
-                        lastval = lastval || [];
-                        if (lastval.length>0)
-                            callback(null, { insertId:lastval[0].lastval });
-                        else
-                            callback(null, { insertId: null });
-                    }
-                });
-            }
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Executes the specified query against the underlying database and returns a result set.
+     * @param {*} query
+     * @param {Array<*>=} values
+     * @returns {Promise<*>}
+     */
+    executeAsync(query, values) {
+        return new Promise((resolve, reject) => {
+            return this.execute(query, values, (err, result) => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve(result);
+            })
         });
     }
 
+    /**
+     *
+     * @param {AdapterExecuteCallback} callback
+     * @returns {*}
+     */
+    lastIdentity(callback) {
+        const self = this;
+        return self.open(function(err) {
+            if (err) {
+                return callback(err);
+            }
+            //execute lastval (for sequence)
+            return self.execute('SELECT last_insert_rowid() as lastval', [], function(err, lastval) {
+                if (err) {
+                    return callback(null, { insertId: null });
+                }
+                lastval = lastval || [];
+                if (lastval.length>0)
+                    { // noinspection JSUnresolvedVariable
+                        callback(null, { insertId:lastval[0].lastval });
+                    }
+                else
+                    callback(null, { insertId: null });
+            });
+        });
+    }
+
+    // noinspection JSUnusedGlobalSymbols
+    /**
+     * Returns the identity value which has been inserted during the last query operation
+     * @returns {Promise<*>}
+     */
+    lastIdentityAsync() {
+        return new Promise((resolve, reject) => {
+            return this.lastIdentity( (err, result) => {
+                if (err) {
+                    return reject(err);
+                }
+                return resolve(result);
+            })
+        });
+    }
+
+    /**
+     *
+     * @param {string} table
+     * @returns {MemoryAdapterTableIndexes}
+     */
     indexes(table) {
         const self = this;
         const formatter = new MemoryFormatter();
         return {
+            /**
+             * @param {IndexesCallback} callback
+             */
             list: function (callback) {
                 const this1 = this;
                 if (this1.hasOwnProperty('indexes_')) {
                     return callback(null, this1['indexes_']);
                 }
-                self.execute(`PRAGMA INDEX_LIST(${formatter.escapeName(table)})`, null , function (err, result) {
+                self.execute(`SELECT c.* FROM pragma_index_list(${formatter.escape(table)}) c`, null , function (err, result) {
                     if (err) { return callback(err); }
                     const indexes = result.filter(function(x) {
                         return x.origin === 'c';
@@ -783,7 +1054,7 @@ export class MemoryAdapter {
                         };
                     });
                     eachSeries(indexes, function(index, cb) {
-                        self.execute(`PRAGMA INDEX_INFO(${formatter.escapeName(index.name)})`, null, function(err, columns) {
+                        self.execute(`SELECT c.* FROM pragma_index_info(${formatter.escape(index.name)}) c`, null, function(err, columns) {
                             if (err) { return cb(err); }
                             index.columns = columns.map( x => {
                                 return x.name;
@@ -800,9 +1071,22 @@ export class MemoryAdapter {
                 });
             },
             /**
+             * @returns {Promise<Array<MemoryAdapterTableIndex>>}
+             */
+            listAsync() {
+                return new Promise((resolve, reject) => {
+                   return this.list((err, result) => {
+                      if (err) {
+                          return reject(err);
+                      }
+                      return resolve(result);
+                   });
+                });
+            },
+            /**
              * @param {string} name
-             * @param {Array|string} columns
-             * @param {Function} callback
+             * @param {Array<string>|string} columns
+             * @param {AdapterExecuteCallback} callback
              */
             create: function(name, columns, callback) {
                 const cols = [];
@@ -853,22 +1137,55 @@ export class MemoryAdapter {
                         }
                     }
                 });
-
-
             },
+            /**
+             * @param {string} name
+             * @param {Array<string>|string} columns
+             * @returns {Promise<void>}
+             */
+            createAsync(name, columns) {
+                return new Promise((resolve, reject) => {
+                    return this.create( name, columns, error => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve();
+                    });
+                });
+            },
+            /**
+             *
+             * @param {string} name
+             * @param {AdapterExecuteCallback} callback
+             * @returns {*}
+             */
             drop: function(name, callback) {
                 if (typeof name !== 'string') {
                     return callback(new Error("Name must be a valid string."));
                 }
-                self.execute(`PRAGMA INDEX_LIST(${self.escapeName(table)})`, null, function(err, result) {
+                self.execute(`SELECT c.* FROM pragma_index_list(${formatter.escape(table)}) c`, null, function(err, result) {
                     if (err) { return callback(err); }
                     const exists = typeof result.find(function(x) { return x.name===name; }) !== 'undefined';
                     if (!exists) {
                         return callback();
                     }
-                    self.execute(`DROP INDEX ${self.escapeName(name)}`, [], callback);
+                    self.execute(`DROP INDEX ${formatter.escapeName(name)}`, [], callback);
                 });
-            }
+            },
+            /**
+             * @param {string} name
+             * @returns {Promise<void>}
+             */
+            dropAsync(name) {
+                return new Promise((resolve, reject) => {
+                    return this.drop( name, error => {
+                        if (error) {
+                            return reject(error);
+                        }
+                        return resolve();
+                    });
+                });
+            },
         };
     }
 
