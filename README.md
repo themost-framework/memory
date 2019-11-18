@@ -5,7 +5,7 @@ This repository contains an in-memory data adapter for developing applications a
 
 ### Installation:
 
-    npm install @themost/memory
+    npm install @themost/mem
 
 ### Application Configuration:
 
