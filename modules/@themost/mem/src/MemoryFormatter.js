@@ -243,7 +243,15 @@ export class MemoryFormatter extends SqlFormatter {
         return `CAST(strftime('%M', ${this.escape(p0)}) AS INTEGER)`;
     }
 
+    $minutes(p0) {
+        return `CAST(strftime('%M', ${this.escape(p0)}) AS INTEGER)`;
+    }
+
     $second(p0) {
+        return `CAST(strftime('%S', ${this.escape(p0)}) AS INTEGER)`;
+    }
+
+    $seconds(p0) {
         return `CAST(strftime('%S', ${this.escape(p0)}) AS INTEGER)`;
     }
 
