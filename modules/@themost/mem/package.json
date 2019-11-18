@@ -2,8 +2,11 @@
   "name": "@themost/mem",
   "version": "1.0.0-dev.1",
   "description": "MOST Web Framework Codename Blueshift in-memory data adapter",
-  "main": "dist/themost_memory.js",
+  "main": "dist/themost_mem.js",
+  "types": "dist/themost_mem.d.ts",
   "scripts": {
+    "build": "rollup -c rollup.config.js -m",
+    "watch": "rollup -c rollup.config.js -m -w"
   },
   "repository": {
     "type": "git",
@@ -30,6 +33,6 @@
   },
   "dependencies": {
     "sql.js": "^1.0.1",
-    "async": "^2.6.3"
+    "core-js": "^2.6.10"
   }
 }

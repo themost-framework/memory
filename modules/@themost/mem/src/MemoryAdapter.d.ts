@@ -36,7 +36,9 @@ declare interface MemoryAdapterColumn {
     name: string,
     ordinal: number,
     type: string,
-    nullable: boolean,
+    size?: string;
+    scale?: number;
+    nullable?: boolean,
     primary?: boolean
 }
 
@@ -49,6 +51,7 @@ declare interface MemoryAdapterTable {
     versionAsync(): Promise<string>;
     hasSequence(callback: HasSequenceCallback): void;
     hasSequenceAsync(): Promise<boolean>;
+    indexes?: Array<MemoryAdapterTableIndex>
 }
 
 declare interface MemoryAdapterView {
@@ -78,25 +81,35 @@ declare interface MemoryAdapterTableIndexes {
     createAsync(name: string, columns: Array<string>|string): Promise<void>;
 }
 
-declare interface MemoryAdapterAddColumn {
+declare interface MemoryAdapterAlterColumn {
     name: string;
     type: string;
     nullable?: boolean;
     primary?: boolean;
+    size?: string;
+    scale?: number;
+}
+
+declare interface MemoryAdapterRemoveColumn {
+    name: string;
 }
 
 declare interface MemoryAdapterMigration {
     appliesTo: string;
     model: string;
     description?: string;
-    version: string,
-    add: Array<MemoryAdapterAddColumn>;
+    version: string;
+    updated?: boolean;
+    add: Array<MemoryAdapterAlterColumn>;
+    remove?: Array<MemoryAdapterRemoveColumn>;
+    change?: Array<MemoryAdapterAlterColumn>;
 }
 
 /**
  * @class
  */
 export declare class MemoryAdapter {
+    static formatType(field: MemoryAdapterColumn);
     constructor(options: any);
     open(callback: AdapterExecuteCallback): void;
     openAsync(): Promise<void>;

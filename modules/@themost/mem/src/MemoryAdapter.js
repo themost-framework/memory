@@ -9,7 +9,6 @@ import initSqlJs from 'sql.js';
 import {SqlUtils, QueryExpression, QueryField} from '@themost/query';
 import {MemoryFormatter} from './MemoryFormatter';
 import {TraceUtils} from '@themost/common';
-import {eachSeries, waterfall} from 'async';
 /**
  *
  */
@@ -103,6 +102,10 @@ export class MemoryAdapter {
         return SqlUtils.format(query,values);
     }
 
+    /**
+     * @param {MemoryAdapterColumn} field
+     * @returns {string}
+     */
     static formatType(field) {
         const size = parseInt(field.size);
         let s;
@@ -277,7 +280,7 @@ export class MemoryAdapter {
             return callback();
         }
         /**
-         * @type {*}
+         * @type {MemoryAdapterMigration}
          */
         const migration = obj;
         const format = function(format, obj)
@@ -290,255 +293,167 @@ export class MemoryAdapter {
             return result;
         };
 
-
-        waterfall([
-            //1. Check migrations table existence
-            function(cb) {
-                if (MemoryAdapter.supportMigrations) {
-                    return cb(null, true);
-                }
-                self.table('migrations').exists(function(err, exists) {
-                    if (err) { cb(err); return; }
-                    cb(null, exists);
-                });
-            },
-            //2. Create migrations table, if it does not exist
-            function(arg, cb) {
-                if (arg) { cb(null, 0); return; }
-                //create migrations table
-                self.execute('CREATE TABLE migrations("id" INTEGER PRIMARY KEY AUTOINCREMENT, ' +
-                    '"appliesTo" TEXT NOT NULL, "model" TEXT NULL, "description" TEXT,"version" TEXT NOT NULL)',
-                    [], function(err) {
-                        if (err) { cb(err); return; }
-                        MemoryAdapter.supportMigrations = true;
-                        cb(null, 0);
-                    });
-            },
-            //3. Check if migration has already been applied (true=Table version is equal to migration version, false=Table version is older from migration version)
-            function(arg, cb) {
-                self.table(migration.appliesTo).version(function(err, version) {
-                    if (err) { cb(err); return; }
-                    cb(null, (version>=migration.version));
-                });
-            },
-            //4a. Check table existence (-1=Migration has already been applied, 0=Table does not exist, 1=Table exists)
-            function(arg, cb) {
-                //migration has already been applied (set migration.updated=true)
-                if (arg) {
-                    migration.updated=true;
-                    cb(null, -1);
-                }
-                else {
-                    self.table(migration.appliesTo).exists(function(err, exists) {
-                        if (err) { cb(err); return; }
-                        cb(null, exists ? 1 : 0);
-                    });
-
-                }
-            },
-            //4. Get table columns
-            function(arg, cb) {
-                //migration has already been applied
-                if (arg<0) { cb(null, [arg, null]); return; }
-                self.table(migration.appliesTo).columns(function(err, columns) {
-                    if (err) { cb(err); return; }
-                    cb(null, [arg, columns]);
-                });
-            },
-            //5. Migrate target table (create or alter)
-            function(args, cb) {
-                //migration has already been applied (args[0]=-1)
-                if (args[0] < 0) {
-                    cb(null, args[0]);
-                }
-                else if (args[0] === 0) {
-                    //create table
-                    const strFields = migration.add.filter(function(x) {
-                        return !x['oneToMany'];
-                    }).map(
-                        function(x) {
-                            return format('"%f" %t', x);
-                        }).join(', ');
-                    const sql = `CREATE TABLE "${migration.appliesTo}" (${strFields})`;
-                    self.execute(sql, null, function(err) {
-                        if (err) { cb(err); return; }
-                        cb(null, 1);
-                    });
-                }
-                else if (args[0] === 1) {
-                    const expressions = [];
-
-                    const /**
-                     * @type {{columnName:string,ordinal:number,dataType:*, maxLength:number,isNullable:number,,primary:boolean }[]}
-                     */
-                    columns = args[1];
-
-                    let forceAlter = false;
-                    let column;
-                    let newType;
-                    let oldType;
-                    //validate operations
-
-                    //1. columns to be removed
-                    if (Array.isArray(migration.remove)) {
-                        if (migration.remove>0) {
-                            for (let i = 0; i < migration.remove.length; i++) {
-                                let x = migration.remove[i];
-                                let colIndex = columns.findIndex( y => {
-                                    // noinspection JSUnresolvedVariable
-                                    return y.name === x.name;
-                                });
-                                if (colIndex>=0) {
-                                    if (!columns[colIndex].primary) {
-                                        forceAlter = true;
-                                    }
-                                    else {
-                                        migration.remove.splice(i, 1);
-                                        i-=1;
-                                    }
+        (async function migrate() {
+            // check if table `migrations`  exists or not
+            let exists = await self.table('migrations').existsAsync();
+            if (exists === false) {
+                // create table `migrations`
+                await self.executeAsync('CREATE TABLE migrations("id" INTEGER PRIMARY KEY AUTOINCREMENT, ' +
+                    '"appliesTo" TEXT NOT NULL, "model" TEXT NULL, "description" TEXT,"version" TEXT NOT NULL)')
+            }
+            // validate target version
+            if (migration.appliesTo == null) {
+                throw new Error('Target object may not be null will trying to execute a data migration.');
+            }
+            // get last version
+            const lastVersion = await self.table(migration.appliesTo).versionAsync();
+            // get version
+            const version = migration.version || '1.0';
+            if (lastVersion && lastVersion >= version) {
+                // do nothing because data migration has been already applied
+                migration.updated = true;
+                return;
+            }
+            // check table existence
+            exists = await self.table(migration.appliesTo).existsAsync();
+            if (exists === false) {
+                // create table
+                const str1 = migration.add.filter( x => {
+                    return !x['oneToMany'];
+                }).map( x => {
+                        return format('"%f" %t', x);
+                    }).join(', ');
+                const sql = `CREATE TABLE "${migration.appliesTo}" (${str1})`;
+                // execute create
+                await self.executeAsync(sql);
+            }
+            else {
+                // get table columns
+                const columns = await self.table(migration.appliesTo).columnsAsync();
+                let forceAlter = false;
+                let newType;
+                let oldType;
+                let column;
+                let expressions = [];
+                // columns to be removed
+                if (Array.isArray(migration.remove)) {
+                    if (migration.remove.length) {
+                        for (let i = 0; i < migration.remove.length; i++) {
+                            let x = migration.remove[i];
+                            let colIndex = columns.findIndex( y => {
+                                // noinspection JSUnresolvedVariable
+                                return y.name === x.name;
+                            });
+                            if (colIndex>=0) {
+                                if (!columns[colIndex].primary) {
+                                    // set force later column
+                                    forceAlter = true;
                                 }
                                 else {
+                                    // remove column from remove collection
                                     migration.remove.splice(i, 1);
                                     i-=1;
                                 }
                             }
+                            else {
+                                // remove column from remove collection
+                                migration.remove.splice(i, 1);
+                                i-=1;
+                            }
                         }
                     }
-                    //1. columns to be changed
-                    if (Array.isArray(migration.change)) {
-                        if (migration.change>0) {
-
-                            for (let i = 0; i < migration.change.length; i++) {
-                                let x = migration.change[i];
-                                column = columns.find( y => {
-                                    // noinspection JSUnresolvedVariable
-                                    return y.name === x.name;
-                                });
-                                if (column) {
-                                    if (!column.primary) {
-                                        //validate new column type (e.g. TEXT(120,0) NOT NULL)
-                                        newType = format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
-                                        if ((newType !== oldType)) {
-                                            //force alter
-                                            forceAlter = true;
-                                        }
-                                    }
-                                    else {
-                                        //remove column from change collection (because it's a primary key)
-                                        migration.change.splice(i, 1);
-                                        i-=1;
+                }
+                // columns to be changed
+                if (Array.isArray(migration.change)) {
+                    if (migration.change.length) {
+                        for (let i = 0; i < migration.change.length; i++) {
+                            let x = migration.change[i];
+                            column = columns.find( y => {
+                                // noinspection JSUnresolvedVariable
+                                return y.name === x.name;
+                            });
+                            if (column) {
+                                if (!column.primary) {
+                                    // validate new column type (e.g. TEXT(120,0) NOT NULL)
+                                    newType = format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
+                                    if ((newType !== oldType)) {
+                                        //force alter
+                                        forceAlter = true;
                                     }
                                 }
                                 else {
-                                    //add column (column was not found in table)
-                                    migration.add.push(x);
-                                    //remove column from change collection
+                                    // remove column from change collection (because it's a primary key)
                                     migration.change.splice(i, 1);
                                     i-=1;
                                 }
-
                             }
-
+                            else {
+                                // add column (column was not found in table)
+                                migration.add.push(x);
+                                // remove column from change collection
+                                migration.change.splice(i, 1);
+                                i-=1;
+                            }
                         }
                     }
-                    if (Array.isArray(migration.add)) {
-
-                        for (let i = 0; i < migration.add.length; i++) {
-                            let x = migration.add[i];
-                            column = columns.find( y => {
-                                // noinspection JSUnresolvedVariable
-                                return (y.name === x.name);
-                            });
-                            if (column) {
-                                if (column.primary) {
+                }
+                // columns to be added
+                if (Array.isArray(migration.add)) {
+                    for (let i = 0; i < migration.add.length; i++) {
+                        let x = migration.add[i];
+                        column = columns.find( y => {
+                            // noinspection JSUnresolvedVariable
+                            return (y.name === x.name);
+                        });
+                        if (column) {
+                            if (column.primary) {
+                                migration.add.splice(i, 1);
+                                i-=1;
+                            }
+                            else {
+                                newType = format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
+                                if (newType === oldType) {
+                                    //remove column from add collection
                                     migration.add.splice(i, 1);
                                     i-=1;
                                 }
                                 else {
-                                    newType = format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
-                                    if (newType === oldType) {
-                                        //remove column from add collection
-                                        migration.add.splice(i, 1);
-                                        i-=1;
-                                    }
-                                    else {
-                                        forceAlter = true;
-                                    }
+                                    forceAlter = true;
                                 }
                             }
                         }
-                        if (forceAlter) {
-                            cb(new Error('Full table migration is not yet implemented.'));
-                            return;
-                        }
-                        else {
-                            migration.add.forEach(function(x) {
-                                //search for columns
-                                expressions.push(`ALTER TABLE "${migration.appliesTo}" ADD COLUMN "${x.name}" ${MemoryAdapter.formatType(x)}`);
-                            });
-                        }
-
                     }
-                    if (expressions.length>0) {
-                        eachSeries(expressions, function(expr,cb) {
-                            self.execute(expr, [], function(err) {
-                                cb(err);
-                            });
-                        }, function(err) {
-                            if (err) { cb(err); return; }
-                            cb(null, 1);
-                        });
+                    if (forceAlter) {
+                        throw new Error('Full table migration is not yet implemented.');
                     }
                     else {
-                        cb(null, 2);
+                        migration.add.forEach( x => {
+                            //search for columns
+                            expressions.push(`ALTER TABLE "${migration.appliesTo}" ADD COLUMN "${x.name}" ${MemoryAdapter.formatType(x)}`);
+                        });
                     }
                 }
-                else {
-                    cb(new Error('Invalid table status.'));
+                // execute expressions
+                if (expressions.length) {
+                    for (let i = 0; i < expressions.length; i++) {
+                        const expression = migration[i];
+                        await self.executeAsync(expression);
+                    }
                 }
-            },
-            //Apply data model indexes
-            function (arg, cb) {
-                if (arg<=0) { return cb(null, arg); }
-                if (migration.indexes) {
-                    const tableIndexes = self.indexes(migration.appliesTo);
-                    //enumerate migration constraints
-                    eachSeries(migration.indexes, function(index, indexCallback) {
-                        tableIndexes.create(index.name, index.columns, indexCallback);
-                    }, function(err) {
-                        //throw error
-                        if (err) { return cb(err); }
-                        //or return success flag
-                        return cb(null, 1);
-                    });
-                }
-                else {
-                    //do nothing and exit
-                    return cb(null, 1);
-                }
-            },
-            function(arg, cb) {
-                if (arg>0) {
-                    //log migration to database
-                    self.execute('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [migration.appliesTo,
-                        migration.model,
-                        migration.version,
-                        migration.description ], function(err) {
-                        if (err)  {
-                            return cb(err);
-                        }
-                        cb(null, 1);
-                    });
-                }
-                else {
-                    migration.updated = true;
-                    cb(null, arg);
-                }
+                // update version
+                await self.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
+                    migration.appliesTo,
+                    migration.model,
+                    migration.version,
+                    migration.description
+                ]);
+                migration.updated = true;
             }
-        ], function(err) {
-            callback(err);
+        })().then(() => {
+            return callback();
+        }).catch( err => {
+            return callback(err);
         });
-
     }
 
     // noinspection JSUnusedGlobalSymbols
@@ -1039,9 +954,9 @@ export class MemoryAdapter {
              * @param {IndexesCallback} callback
              */
             list: function (callback) {
-                const this1 = this;
-                if (this1.hasOwnProperty('indexes_')) {
-                    return callback(null, this1['indexes_']);
+                const thisObject = this;
+                if (thisObject.hasOwnProperty('indexes')) {
+                    return callback(null, thisObject['indexes']);
                 }
                 self.execute(`SELECT c.* FROM pragma_index_list(${formatter.escape(table)}) c`, null , function (err, result) {
                     if (err) { return callback(err); }
@@ -1053,19 +968,21 @@ export class MemoryAdapter {
                             columns:[]
                         };
                     });
-                    eachSeries(indexes, function(index, cb) {
-                        self.execute(`SELECT c.* FROM pragma_index_info(${formatter.escape(index.name)}) c`, null, function(err, columns) {
-                            if (err) { return cb(err); }
+                    (async function() {
+                        for (let i = 0; i < indexes.length; i++) {
+                            // get index
+                            const index = indexes[i];
+                            // get columns
+                            const columns = await self.executeAsync(`SELECT c.* FROM pragma_index_info(${formatter.escape(index.name)}) c`);
+                            // set index columns
                             index.columns = columns.map( x => {
                                 return x.name;
                             });
-                            return cb();
-                        });
-                    }, function(err) {
-                        if (err) {
-                            return callback(err);
                         }
-                        this1['indexes_'] = indexes;
+                        // set table indexes
+                        thisObject.indexes = indexes;
+                        return indexes;
+                    })().then( indexes => {
                         return callback(null, indexes);
                     });
                 });

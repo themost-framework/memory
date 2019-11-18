@@ -14,8 +14,8 @@ module.exports = function (api) {
                 }
             ]
         ],
-        "ignore": [
-            "./node_modules/"
+        "ignore":  [
+            /\/node_modules/
         ],
         "plugins": [
             [
