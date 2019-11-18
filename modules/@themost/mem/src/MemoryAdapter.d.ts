@@ -110,6 +110,7 @@ declare interface MemoryAdapterMigration {
  */
 export declare class MemoryAdapter {
     static formatType(field: MemoryAdapterColumn);
+    static isDate(value: any);
     constructor(options: any);
     open(callback: AdapterExecuteCallback): void;
     openAsync(): Promise<void>;
@@ -132,3 +133,5 @@ export declare class MemoryAdapter {
     createView(name: string, query: any, callback: AdapterExecuteCallback): void;
     createViewAsync(name: string, query: any): Promise<void>;
 }
+
+export declare function createInstance(options: any): MemoryAdapter;

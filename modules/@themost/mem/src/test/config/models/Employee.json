@@ -1,0 +1,39 @@
+{
+    "$schema": "https://themost-framework.github.io/themost/models/2018/2/schema.json",
+    "name": "Employee",
+    "title": "Employees",
+    "source": "Employees",
+    "view": "Employees",
+    "version": "1.0",
+    "fields": [
+        {
+            "name": "EmployeeID",
+            "type": "Integer",
+            "nullable": false,
+            "primary": true
+        },
+        {
+            "name": "LastName",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "FirstName",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "BirthDate",
+            "type": "Date"
+        },
+        {
+            "name": "Photo",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "Notes",
+            "type": "Text"
+        }
+    ]
+}

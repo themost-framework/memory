@@ -27,7 +27,9 @@
   "homepage": "https://github.com/kbarbounakis/themost-memory#readme",
   "peerDependencies": {
     "@themost/common": "^2.3.2",
-    "@themost/query": "^2.3.2"
+    "@themost/query": "^2.3.2",
+    "@themost/data": "^2.4.7",
+    "@themost/xml": "^2.3.1"
   },
   "devDependencies": {
   },

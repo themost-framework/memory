@@ -1,0 +1,26 @@
+{
+    "$schema": "https://themost-framework.github.io/themost/models/2018/2/schema.json",
+    "title": "Shipper",
+    "name": "Shippers",
+    "source": "Shippers",
+    "view": "Shippers",
+    "version": "1.0",
+    "fields": [
+        {
+            "name": "ShipperID",
+            "type": "Integer",
+            "nullable": false,
+            "primary": true
+        },
+        {
+            "name": "ShipperName",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "Phone",
+            "type": "Text",
+            "size": 255
+        }
+    ]
+}

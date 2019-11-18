@@ -1,0 +1,21 @@
+{
+    "$schema": "https://themost-framework.github.io/themost/models/2018/2/schema.json",
+    "name": "User",
+    "title": "Users",
+    "source": "Users",
+    "view": "Users",
+    "version": "1.0",
+    "fields": [
+        {
+            "name": "id",
+            "type": "Counter",
+            "nullable": false,
+            "primary": true
+        },
+        {
+            "name": "name",
+            "type": "Text",
+            "size": 255
+        }
+    ]
+}
