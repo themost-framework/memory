@@ -1,4 +1,4 @@
-# themost-memory
+# themost-mem
 MOST Web Framework in-memory data adapter for testing environments
 
 This repository contains an in-memory data adapter for developing applications and services under [MOST Web Framework 2.0 Codename Blueshift](https://github.com/themost-framework/themost)
