@@ -40,6 +40,6 @@ jobs:
           registry-url: https://npm.pkg.github.com/
           scope: '@themost'
       - run: npm ci
-      - run: npm publish ./modules/@themost/mem/
+      - run: npm publish ./modules/@themost/mem/ --access=public
         env:
           NODE_AUTH_TOKEN: ${{secrets.GITHUB_TOKEN}}
