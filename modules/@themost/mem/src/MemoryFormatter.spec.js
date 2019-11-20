@@ -97,41 +97,7 @@ describe('MemoryFormatter', () => {
         item = await model.where('CustomerID').equal(1).silent().getItem();
         expect(item).toBeFalsy();
     });
-    it('should use date values', async () => {
-        const model = context.model('Employees');
-        // noinspection SpellCheckingInspection
-        const newItem = {
-            EmployeeID: 1,
-            LastName: 'Davolio',
-            FirstName: 'Nancy',
-            BirthDate: new Date('1968-12-08'),
-            Photo: 'EmpID1.pic',
-            Notes: 'Education includes a BA in psychology from Colorado State University. ' +
-                'She also completed (The Art of the Cold Call). Nancy is a member of \'' +
-            'Toastmasters International\'.'
-        };
-        await model.silent().insert(newItem);
-        let item = await model.where('EmployeeID').equal(1).silent().getItem();
-        expect(item).toBeTruthy();
-        await model.remove(item);
-        item = await model.where('EmployeeID').equal(1).silent().getItem();
-        expect(item).toBeFalsy();
-    });
     it('should use associations', async () => {
-        // noinspection SpellCheckingInspection
-        const newEmployee = {
-            EmployeeID: 5,
-            LastName: 'Buchanan',
-            FirstName: 'Steven',
-            BirthDate: new Date('1955-03-04'),
-            Photo: 'EmpID5.pic',
-            Notes: 'Steven Buchanan graduated from St. Andrews University, Scotland, with a BSC degree. ' +
-                'Upon joining the company as a sales representative, he spent 6 months in an orientation ' +
-                'program at the Seattle office and then returned to his permanent post in London, ' +
-                'where he was promoted to sales manager. Mr. Buchanan has completed the courses \'' +
-            'Successful Telemarketing\''
-        };
-        await context.model('Employees').silent().insert(newEmployee);
         // noinspection SpellCheckingInspection
         const newCustomer = {
             CustomerID: 90,
@@ -143,18 +109,6 @@ describe('MemoryFormatter', () => {
             Country: 'Finland'
         };
         await context.model('Customers').silent().insert(newCustomer);
-
-        // INSERT INTO `shippers` (`ShipperID`, `ShipperName`, `Phone`) VALUES
-        // (1, 'Speedy Express', '(503) 555-9831'),
-        //     (2, 'United Package', '(503) 555-3199'),
-        //     (3, 'Federal Shipping', '(503) 555-9931');
-
-        const newShipper = {
-            ShipperID: 3,
-            ShipperName: 'Federal Shipping',
-            Phone: '(503) 555-9931'
-        };
-        await context.model('Shippers').silent().insert(newShipper);
 
         // INSERT INTO `orders` (`OrderID`, `CustomerID`, `EmployeeID`, `OrderDate`, `ShipperID`) VALUES
         // (10248, 90, 5, '1996-07-04', 3);
@@ -174,28 +128,13 @@ describe('MemoryFormatter', () => {
         expect(order.Employee.EmployeeID).toEqual(5);
         expect(order.Shipper.ShipperID).toEqual(3);
 
-        await context.model('Employees').silent().remove(newEmployee);
         await context.model('Customers').silent().remove(newCustomer);
-        await context.model('Shippers').silent().remove(newShipper);
         await context.model('Orders').silent().remove(newOrder);
 
     });
 
     it('should use date functions', async () => {
-        // noinspection SpellCheckingInspection
-        const newEmployee = {
-            EmployeeID: 5,
-            LastName: 'Buchanan',
-            FirstName: 'Steven',
-            BirthDate: new Date('1955-03-04'),
-            Photo: 'EmpID5.pic',
-            Notes: 'Steven Buchanan graduated from St. Andrews University, Scotland, with a BSC degree. ' +
-                'Upon joining the company as a sales representative, he spent 6 months in an orientation ' +
-                'program at the Seattle office and then returned to his permanent post in London, ' +
-                'where he was promoted to sales manager. Mr. Buchanan has completed the courses \'' +
-                'Successful Telemarketing\''
-        };
-        await context.model('Employees').silent().insert(newEmployee);
+
         // noinspection SpellCheckingInspection
         const newCustomer = {
             CustomerID: 90,
@@ -208,17 +147,6 @@ describe('MemoryFormatter', () => {
         };
         await context.model('Customers').silent().insert(newCustomer);
 
-        // INSERT INTO `shippers` (`ShipperID`, `ShipperName`, `Phone`) VALUES
-        // (1, 'Speedy Express', '(503) 555-9831'),
-        //     (2, 'United Package', '(503) 555-3199'),
-        //     (3, 'Federal Shipping', '(503) 555-9931');
-
-        const newShipper = {
-            ShipperID: 3,
-            ShipperName: 'Federal Shipping',
-            Phone: '(503) 555-9931'
-        };
-        await context.model('Shippers').silent().insert(newShipper);
 
         // INSERT INTO `orders` (`OrderID`, `CustomerID`, `EmployeeID`, `OrderDate`, `ShipperID`) VALUES
         // (10248, 90, 5, '1996-07-04', 3);
@@ -288,9 +216,7 @@ describe('MemoryFormatter', () => {
             .getItems();
         expect(orders.length).toEqual(1);
 
-        await context.model('Employees').silent().remove(newEmployee);
         await context.model('Customers').silent().remove(newCustomer);
-        await context.model('Shippers').silent().remove(newShipper);
         await context.model('Orders').silent().remove([
             {
                 OrderID: 10248
@@ -302,21 +228,77 @@ describe('MemoryFormatter', () => {
 
     });
 
+    it('should use string functions', async () => {
+        // add customers
+        await context.model('Customers').silent().getItems();
+        const insertStatements = [
+            `INSERT INTO customers (CustomerID, CustomerName, ContactName, Address, City, PostalCode, Country) VALUES (78, 'The Cracker Box', 'Liu Wong', '55 Grizzly Peak Rd.', 'Butte', '59801', 'USA');`,
+                `INSERT INTO customers (CustomerID, CustomerName, ContactName, Address, City, PostalCode, Country) VALUES (79, 'Toms Spezialitäten', 'Karin Josephs', 'Luisenstr. 48', 'Münster', '44087', 'Germany');`,
+                `INSERT INTO customers (CustomerID, CustomerName, ContactName, Address, City, PostalCode, Country) VALUES (80, 'Tortuga Restaurante', 'Miguel Angel Paolino', 'Avda. Azteca 123', 'México D.F.', '05033', 'Mexico');`,
+                `INSERT INTO customers (CustomerID, CustomerName, ContactName, Address, City, PostalCode, Country) VALUES (81, 'Tradição Hipermercados', 'Anabela Domingues', 'Av. Inês de Castro, 414', 'São Paulo', '05634-030', 'Brazil');`,
+                `INSERT INTO customers (CustomerID, CustomerName, ContactName, Address, City, PostalCode, Country) VALUES (82, 'Trail''s Head Gourmet Provisioners', 'Helvetius Nagy', '722 DaVinci Blvd.', 'Kirkland', '98034', 'USA');`,
+                `INSERT INTO customers (CustomerID, CustomerName, ContactName, Address, City, PostalCode, Country) VALUES (83, 'Vaffeljernet', 'Palle Ibsen', 'Smagsløget 45', 'Århus', '8200', 'Denmark');`,
+                `INSERT INTO customers (CustomerID, CustomerName, ContactName, Address, City, PostalCode, Country) VALUES (84, 'Victuailles en stock', 'Mary Saveley', '2, rue du Commerce', 'Lyon', '69004', 'France');`
+        ];
+        for (let i = 0; i < insertStatements.length; i++) {
+            await context.db.executeAsync(insertStatements[i], null);
+        }
+
+        let customers = await context.model('Customers')
+            .where('CustomerName').startsWith('To')
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(2);
+
+        customers = await context.model('Customers')
+            .where('CustomerName').endsWith('Box')
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(1);
+
+        customers = await context.model('Customers')
+            .where('CustomerName').contains('Spezial')
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(1);
+
+        customers = await context.model('Customers')
+            .where('CustomerName').indexOf('Toms').equal(0)
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(1);
+
+        customers = await context.model('Customers')
+            .where('CustomerName').substr(0, 4).equal('Toms')
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(1);
+
+        customers = await context.model('Customers')
+            .where('CustomerName').concat(' Test').equal('The Cracker Box Test')
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(1);
+
+        customers = await context.model('Customers')
+            .where('ContactName').length().equal(8)
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(1);
+
+        customers = await context.model('Customers')
+            .where('CustomerName').notContains('T').equal(8)
+            .silent()
+            .getItems();
+        expect(customers.length).toEqual(2);
+
+        // clear customers
+        await context.db.executeAsync('DELETE FROM `Customers`', null);
+
+    });
+
     it('should use DataModel.select()', async () => {
-        // noinspection SpellCheckingInspection
-        const newEmployee = {
-            EmployeeID: 5,
-            LastName: 'Buchanan',
-            FirstName: 'Steven',
-            BirthDate: new Date('1955-03-04'),
-            Photo: 'EmpID5.pic',
-            Notes: 'Steven Buchanan graduated from St. Andrews University, Scotland, with a BSC degree. ' +
-                'Upon joining the company as a sales representative, he spent 6 months in an orientation ' +
-                'program at the Seattle office and then returned to his permanent post in London, ' +
-                'where he was promoted to sales manager. Mr. Buchanan has completed the courses \'' +
-                'Successful Telemarketing\''
-        };
-        await context.model('Employees').silent().insert(newEmployee);
+
         // noinspection SpellCheckingInspection
         const newCustomer = {
             CustomerID: 90,
@@ -329,18 +311,6 @@ describe('MemoryFormatter', () => {
         };
         await context.model('Customers').silent().insert(newCustomer);
 
-        // INSERT INTO `shippers` (`ShipperID`, `ShipperName`, `Phone`) VALUES
-        // (1, 'Speedy Express', '(503) 555-9831'),
-        //     (2, 'United Package', '(503) 555-3199'),
-        //     (3, 'Federal Shipping', '(503) 555-9931');
-
-        const newShipper = {
-            ShipperID: 3,
-            ShipperName: 'Federal Shipping',
-            Phone: '(503) 555-9931'
-        };
-        await context.model('Shippers').silent().insert(newShipper);
-
         // INSERT INTO `orders` (`OrderID`, `CustomerID`, `EmployeeID`, `OrderDate`, `ShipperID`) VALUES
         // (10248, 90, 5, '1996-07-04', 3);
         const newOrder = {
@@ -352,20 +322,116 @@ describe('MemoryFormatter', () => {
         };
         await context.model('Orders').silent().insert(newOrder);
 
-        const order = await context.model('Orders')
+        let order = await context.model('Orders')
             .where('OrderID').equal(10248)
             .select('OrderID',
-                'CustomerID/CustomerName as CustomerName')
+                'Customer/CustomerName as CustomerName',
+                'Shipper/ShipperName as ShipperName')
             .silent().getItem();
         expect(order).toBeTruthy();
         expect(order.OrderID).toBeTruthy();
         expect(order.CustomerName).toBeTruthy();
 
-        await context.model('Employees').silent().remove(newEmployee);
+        order = await context.model('Orders')
+            .where('Shipper/ShipperName').equal('Federal Shipping')
+            .select('OrderID',
+                'Customer/CustomerName as CustomerName',
+                'Shipper/ShipperName as ShipperName')
+            .silent().getItem();
+        expect(order).toBeTruthy();
+
+        let customers = await context.model('Customers')
+            .where('Orders/Shipper').equal('3')
+            .silent()
+            .getItems();
+        expect(customers).toBeTruthy();
+
         await context.model('Customers').silent().remove(newCustomer);
-        await context.model('Shippers').silent().remove(newShipper);
         await context.model('Orders').silent().remove(newOrder);
 
+    });
+
+    it('should use MemoryAdapter.lastIdentity()', async () => {
+        const newUser = {
+            Name: 'user1@example.com'
+        };
+        await context.model('Users').silent().insert(newUser);
+        const user = await context.model('Users')
+            .where('Name').equal('user1@example.com')
+            .getItem();
+        expect(user).toBeTruthy();
+        await context.model('Users').silent().remove(newUser);
+    });
+
+    it('should use math functions', async () => {
+        let items = await context.model('Product').where('Price').greaterThan(100).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price).toBeGreaterThan(100);
+        });
+        items = await context.model('Product').where('Price').greaterOrEqual(97).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price).toBeGreaterThanOrEqual(97);
+        });
+        items = await context.model('Product').where('Price').lowerThan(10).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price).toBeLessThan(10);
+        });
+        items = await context.model('Product').where('Price').lowerOrEqual(10).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price).toBeLessThanOrEqual(10);
+        });
+
+        items = await context.model('Product').where('Price').between(10, 15).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price).toBeGreaterThanOrEqual(10) && expect(item.Price).toBeLessThanOrEqual(15);
+        });
+
+        items = await context.model('Product').where('Price').floor().equal(12).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(Math.floor(item.Price)).toEqual(12);
+        });
+
+        items = await context.model('Product').where('Price').ceil().equal(13).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(Math.ceil(item.Price)).toEqual(13);
+        });
+
+        items = await context.model('Product').where('Price').multiply(1.2).lowerOrEqual(15).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price * 1.2).toBeLessThanOrEqual(15);
+        });
+
+        items = await context.model('Product').where('Price').subtract(5).lowerOrEqual(10).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price - 5).toBeLessThanOrEqual(10);
+        });
+
+        items = await context.model('Product').where('Price').add(5).lowerOrEqual(10).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price + 5).toBeLessThanOrEqual(10);
+        });
+
+        items = await context.model('Product').where('Price').divide(2).lowerThan(10).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price / 2).toBeLessThan(10);
+        });
+
+        items = await context.model('Product').where('Price').round(1).lowerThan(10).silent().getItems();
+        expect(items.length).toBeGreaterThan(0);
+        items.forEach( item => {
+            expect(item.Price).toBeLessThan(10);
+        });
     });
 
 });

@@ -742,6 +742,7 @@ export class MemoryAdapter {
                 callback = callback || function() {};
                 self.open(function(err) {
                     if (err) { callback(err); return; }
+                    const formatter = new MemoryFormatter();
                     const sql = `DROP VIEW IF EXISTS ${formatter.escapeName(name)}`;
                     self.execute(sql, undefined, function(err) {
                         if (err) { callback(err); return; }
@@ -775,7 +776,6 @@ export class MemoryAdapter {
                         }
                         try {
                             let sql = `CREATE VIEW ${formatter.escapeName(name)} AS `;
-                            const formatter = new MemoryFormatter();
                             sql += formatter.format(q);
                             return self.execute(sql, null, (error) => {
                                 if (error) {

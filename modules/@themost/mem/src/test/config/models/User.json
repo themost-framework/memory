@@ -3,19 +3,29 @@
     "name": "User",
     "title": "Users",
     "source": "Users",
-    "view": "Users",
+    "view": "UsersView",
     "version": "1.0",
+    "inherits": "Account",
     "fields": [
         {
-            "name": "id",
-            "type": "Counter",
+            "name": "Enabled",
+            "type": "Boolean",
             "nullable": false,
-            "primary": true
+            "value": "javascript:return true;"
         },
         {
-            "name": "name",
-            "type": "Text",
-            "size": 255
+            "name": "Groups",
+            "many": true,
+            "mapping": {
+                "associationAdapter": "GroupMembers",
+                "associationType": "junction",
+                "associationObjectField": "Group",
+                "associationValueField": "Member",
+                "parentModel": "Group",
+                "parentField": "ID",
+                "childModel": "User",
+                "childField": "ID"
+            }
         }
     ]
 }

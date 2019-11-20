@@ -41,6 +41,18 @@
             "name": "Country",
             "type": "Text",
             "size": 255
+        },
+        {
+            "name": "Orders",
+            "type": "Order",
+            "many": true,
+            "mapping": {
+                "parentModel": "Customer",
+                "parentField": "CustomerID",
+                "childModel": "Order",
+                "childField": "Customer",
+                "associationType": "association"
+            }
         }
     ]
 }
