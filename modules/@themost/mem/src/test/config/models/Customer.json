@@ -1,0 +1,58 @@
+{
+    "$schema": "https://themost-framework.github.io/themost/models/2018/2/schema.json",
+    "name": "Customer",
+    "title": "Customers",
+    "source": "Customers",
+    "view": "Customers",
+    "version": "1.0",
+    "fields": [
+        {
+            "name": "CustomerID",
+            "type": "Integer",
+            "nullable": false,
+            "primary": true
+        },
+        {
+            "name": "CustomerName",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "ContactName",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "Address",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "City",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "PostalCode",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "Country",
+            "type": "Text",
+            "size": 255
+        },
+        {
+            "name": "Orders",
+            "type": "Order",
+            "many": true,
+            "mapping": {
+                "parentModel": "Customer",
+                "parentField": "CustomerID",
+                "childModel": "Order",
+                "childField": "Customer",
+                "associationType": "association"
+            }
+        }
+    ]
+}

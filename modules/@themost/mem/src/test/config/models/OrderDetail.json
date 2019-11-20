@@ -1,0 +1,33 @@
+{
+    "$schema": "https://themost-framework.github.io/themost/models/2018/2/schema.json",
+    "title": "OrderDetail",
+    "name": "OrderDetails",
+    "source": "Order_Details",
+    "view": "Order_Details",
+    "version": "1.0",
+    "fields": [
+        {
+            "name": "OrderDetailID",
+            "type": "Integer",
+            "nullable": false,
+            "primary": true
+        },
+        {
+            "name": "OrderID",
+            "property": "Order",
+            "type": "Order",
+            "nullable": false
+        },
+        {
+            "name": "ProductID",
+            "property": "Product",
+            "type": "Product",
+            "nullable": false
+        },
+        {
+            "name": "Quantity",
+            "type": "PositiveInteger",
+            "nullable": false
+        }
+    ]
+}

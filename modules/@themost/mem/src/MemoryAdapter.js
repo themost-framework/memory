@@ -8,18 +8,29 @@
 import initSqlJs from 'sql.js';
 import {SqlUtils, QueryExpression, QueryField} from '@themost/query';
 import {MemoryFormatter} from './MemoryFormatter';
-import {TraceUtils} from '@themost/common';
+import {TraceUtils, LangUtils} from '@themost/common';
+
+const INSTANCE_DB = new Map();
+const DateTimeRegex = /^\d{4}-([0]\d|1[0-2])-([0-2]\d|3[01])(?:[T ](\d+):(\d+)(?::(\d+)(?:\.(\d+))?)?)(?:Z(-?\d*))?([+-](\d+):(\d+))?$/;
+
 /**
  *
  */
 export class MemoryAdapter {
+
+    static isDate(value) {
+        if (value instanceof Date) {
+            return true;
+        }
+        return DateTimeRegex.test(value);
+    }
 
     constructor(options) {
         // noinspection JSUnusedGlobalSymbols
         /**
          * @type {{database: string}}
          */
-        this.options = options || { database: ':memory:' };
+        this.options = options || { name: 'memory' };
         /**
          * Represents the database raw connection associated with this adapter
          * @type {*}
@@ -35,11 +46,26 @@ export class MemoryAdapter {
     open(callback) {
         const self = this;
         callback = callback || function() {};
+        // if connection is open
         if (self.rawConnection) {
+            // return
             return callback();
         }
+        // init database
         return initSqlJs().then( SQL => {
-            self.rawConnection = new SQL.Database();
+            // try to get instance
+            const db = INSTANCE_DB.get(self.options.name);
+            if (db) {
+                // set database connection
+                self.rawConnection = db;
+            }
+            else {
+                // create database connection
+                self.rawConnection = new SQL.Database();
+                // set instance database
+                INSTANCE_DB.set(self.options.name, self.rawConnection);
+            }
+            // and return
             return callback();
         }).catch( err => {
             return callback(err);
@@ -175,53 +201,49 @@ export class MemoryAdapter {
 
     /**
      * Begins a transactional operation by executing the given function
-     * @param {TransactionFunctionCallback} fn The function to execute
+     * @param {TransactionFunctionCallback} transactionFunc The function to execute
      * @param {AdapterExecuteCallback} callback The callback that contains the error -if any- and the results of the given operation
      */
-    executeInTransaction(fn, callback) {
+    executeInTransaction(transactionFunc, callback) {
         const self = this;
         //ensure parameters
-        fn = fn || function() {};
+        transactionFunc = transactionFunc || function() {};
         callback = callback || function() {};
         self.open(function(err) {
             if (err) {
-                callback(err);
+                return callback(err);
             }
-            else {
-                if (self.transaction) {
-                    fn.call(self, function(err) {
-                        callback(err);
-                    });
+            // if adapter has an active transaction
+            if (self.transaction) {
+                return transactionFunc.call(self, (err) => {
+                    callback(err);
+                });
+            }
+            // begin transaction
+            return self.execute('BEGIN TRANSACTION;', null, (err) => {
+                if (err) {
+                    return callback(err);
                 }
-                else {
-                    //begin transaction
-                    self.rawConnection.run('BEGIN TRANSACTION;', undefined, function(err) {
-                        if (err) {
-                            callback(err);
-                            return;
-                        }
-                        //initialize dummy transaction object (for future use)
-                        self.transaction = { };
-                        //execute function
-                        fn.call(self, function(err) {
-                            if (err) {
-                                //rollback transaction
-                                self.rawConnection.run('ROLLBACK;', undefined, function() {
-                                    self.transaction = null;
-                                    callback(err);
-                                });
-                            }
-                            else {
-                                //commit transaction
-                                self.rawConnection.run('COMMIT;', undefined, function(err) {
-                                    self.transaction = null;
-                                    callback(err);
-                                });
-                            }
+                //initialize dummy transaction object (for future use)
+                self.transaction = { };
+                //execute function
+                transactionFunc.call(self, (err) => {
+                    if (err) {
+                        //rollback transaction
+                        self.execute('ROLLBACK;', null, () => {
+                            self.transaction = null;
+                            return callback(err);
                         });
-                    });
-                }
-            }
+                    }
+                    else {
+                        //commit transaction
+                        self.execute('COMMIT;', null, (err) => {
+                            self.transaction = null;
+                            return callback(err);
+                        });
+                    }
+                });
+            });
         });
     }
 
@@ -720,6 +742,7 @@ export class MemoryAdapter {
                 callback = callback || function() {};
                 self.open(function(err) {
                     if (err) { callback(err); return; }
+                    const formatter = new MemoryFormatter();
                     const sql = `DROP VIEW IF EXISTS ${formatter.escapeName(name)}`;
                     self.execute(sql, undefined, function(err) {
                         if (err) { callback(err); return; }
@@ -753,7 +776,6 @@ export class MemoryAdapter {
                         }
                         try {
                             let sql = `CREATE VIEW ${formatter.escapeName(name)} AS `;
-                            const formatter = new MemoryFormatter();
                             sql += formatter.format(q);
                             return self.execute(sql, null, (error) => {
                                 if (error) {
@@ -846,10 +868,15 @@ export class MemoryAdapter {
                                 const obj = { };
                                 results[0].columns.forEach( (column, index) => {
                                     // define property
+                                    let value = x[index];
+                                    if (MemoryAdapter.isDate(value)) {
+                                        value = new Date(value);
+                                    }
                                     Object.defineProperty(obj, column, {
                                        configurable: true,
                                        enumerable: true,
-                                       value: x[index]
+                                       writable: true,
+                                       value: value
                                     });
                                 });
                                 return obj;
@@ -1106,4 +1133,13 @@ export class MemoryAdapter {
         };
     }
 
+}
+
+/**
+ * Creates an instance of MemoryAdapter class
+ * @param {*} options
+ * @returns {MemoryAdapter}
+ */
+export function createInstance(options) {
+    return new MemoryAdapter(options);
 }

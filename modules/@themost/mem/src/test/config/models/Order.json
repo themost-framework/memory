@@ -1,0 +1,39 @@
+{
+    "$schema": "https://themost-framework.github.io/themost/models/2018/2/schema.json",
+    "title": "Order",
+    "name": "Orders",
+    "source": "Orders",
+    "view": "Orders",
+    "version": "1.0",
+    "fields": [
+        {
+            "name": "OrderID",
+            "type": "Integer",
+            "nullable": false,
+            "primary": true
+        },
+        {
+            "name": "CustomerID",
+            "property": "Customer",
+            "type": "Customer",
+            "nullable": false
+        },
+        {
+            "name": "EmployeeID",
+            "property": "Employee",
+            "type": "Employee",
+            "nullable": false
+        },
+        {
+            "name": "OrderDate",
+            "type": "Date",
+            "nullable": false
+        },
+        {
+            "name": "ShipperID",
+            "property": "Shipper",
+            "type": "Shipper",
+            "nullable": false
+        }
+    ]
+}

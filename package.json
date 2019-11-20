@@ -1,6 +1,6 @@
 {
   "name": "themost-mem-src",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MOST Web Framework Codename Blueshift in-memory data adapter",
   "private": true,
   "scripts": {
@@ -39,7 +39,9 @@
     "@babel/register": "^7.0.0",
     "@babel/runtime": "^7.6.3",
     "@themost/common": "^2.3.2",
+    "@themost/data": "^2.4.8",
     "@themost/query": "^2.3.3",
+    "@themost/xml": "^2.3.1",
     "@types/async": "^2.4.2",
     "@types/es6-promisify": "^6.0.0",
     "@types/jasmine": "^3.4.6",
