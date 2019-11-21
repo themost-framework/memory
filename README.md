@@ -1,3 +1,5 @@
+[![https://nodei.co/npm/@themost%2Fmem.png?downloads=true&downloadRank=true&stars=true](https://nodei.co/npm/@themost%2Fmem.png?downloads=true&downloadRank=true&stars=true)](https://www.npmjs.com/package/@themost%2Fmem)
+
 # themost-mem
 MOST Web Framework in-memory data adapter for testing environments
 
