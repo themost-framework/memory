@@ -10,7 +10,8 @@
             "name": "ShipperID",
             "type": "Integer",
             "nullable": false,
-            "primary": true
+            "primary": true,
+            "value":"javascript:return this.newid();"
         },
         {
             "name": "ShipperName",
@@ -21,6 +22,14 @@
             "name": "Phone",
             "type": "Text",
             "size": 255
+        }
+    ],
+    "constraints": [
+        {
+            "type": "unique",
+            "fields": [
+                "ShipperName"
+            ]
         }
     ],
     "seed": [
