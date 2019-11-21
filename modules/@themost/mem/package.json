@@ -1,6 +1,6 @@
 {
   "name": "@themost/mem",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "description": "MOST Web Framework Codename Blueshift in-memory data adapter",
   "main": "dist/themost_mem.js",
   "types": "dist/themost_mem.d.ts",
