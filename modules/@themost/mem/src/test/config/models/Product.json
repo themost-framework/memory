@@ -10,7 +10,8 @@
             "name": "ProductID",
             "type": "Integer",
             "nullable": false,
-            "primary": true
+            "primary": true,
+            "value":"javascript:return this.newid();"
         },
         {
             "name": "ProductName",
