@@ -462,15 +462,15 @@ export class MemoryAdapter {
                         await self.executeAsync(expression);
                     }
                 }
-                // update version
-                await self.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
-                    migration.appliesTo,
-                    migration.model,
-                    migration.version,
-                    migration.description
-                ]);
-                migration.updated = true;
             }
+            // update version
+            await self.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
+                migration.appliesTo,
+                migration.model,
+                migration.version,
+                migration.description
+            ]);
+            migration.updated = true;
         })().then(() => {
             return callback();
         }).catch( err => {
