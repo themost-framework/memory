@@ -230,7 +230,7 @@ export class MemoryAdapter {
                 transactionFunc.call(self, (err) => {
                     if (err) {
                         //rollback transaction
-                        self.execute('ROLLBACK;', null, () => {
+                        self.execute('ROLLBACK;', null, (err) => {
                             self.transaction = null;
                             return callback(err);
                         });
@@ -348,6 +348,8 @@ export class MemoryAdapter {
                 const sql = `CREATE TABLE "${migration.appliesTo}" (${str1})`;
                 // execute create
                 await self.executeAsync(sql);
+                // set updated to false
+                migration.updated = false;
             }
             else {
                 // get table columns
@@ -455,6 +457,8 @@ export class MemoryAdapter {
                         });
                     }
                 }
+                // set updated to false
+                migration.updated = (expressions.length === 0);
                 // execute expressions
                 if (expressions.length) {
                     for (let i = 0; i < expressions.length; i++) {
@@ -462,15 +466,15 @@ export class MemoryAdapter {
                         await self.executeAsync(expression);
                     }
                 }
-                // update version
-                await self.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
-                    migration.appliesTo,
-                    migration.model,
-                    migration.version,
-                    migration.description
-                ]);
-                migration.updated = true;
             }
+            // finally do update version
+            await self.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
+                migration.appliesTo,
+                migration.model,
+                migration.version,
+                migration.description
+            ]);
+
         })().then(() => {
             return callback();
         }).catch( err => {
