@@ -16,6 +16,7 @@
         {
             "name": "CustomerName",
             "type": "Text",
+            "nullable": false,
             "size": 255
         },
         {

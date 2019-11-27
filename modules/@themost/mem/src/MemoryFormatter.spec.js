@@ -94,6 +94,20 @@ describe('MemoryFormatter', () => {
         item = await model.where('CustomerName').equal('Gavin McDonald').silent().getItem();
         expect(item).toBeFalsy();
     });
+    it('should use DataModel.save() with error', async () => {
+        const model = context.model('Customers');
+        // noinspection SpellCheckingInspection
+        let item = {
+            ContactName: 'Alex McDonald',
+            Address: '43 Essex Court',
+            City: 'Bournemouth, Dorset',
+            PostalCode: 'S81 2FY',
+            Country: 'England'
+        };
+        expectAsync(model.silent().insert(item)).toBeRejected();
+        item = await model.where('ContactName').equal('Gavin McDonald').silent().getItem();
+        expect(item).toBeFalsy();
+    });
     it('should use associations', async () => {
         // noinspection SpellCheckingInspection
         let newCustomer = {
