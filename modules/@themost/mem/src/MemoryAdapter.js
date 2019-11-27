@@ -60,8 +60,10 @@ export class MemoryAdapter {
                 self.rawConnection = db;
             }
             else {
+                self.options.name = self.options.name || 'memory-db';
                 // create database connection
                 self.rawConnection = new SQL.Database();
+                TraceUtils.debug(`Database initialization for ${self.options.name} file=${self.rawConnection.filename} db=${self.rawConnection.db}`);
                 // set instance database
                 INSTANCE_DB.set(self.options.name, self.rawConnection);
             }
@@ -338,6 +340,10 @@ export class MemoryAdapter {
             }
             // check table existence
             exists = await self.table(migration.appliesTo).existsAsync();
+            /**
+             * @type {MemoryAdapter}
+             */
+            let clonedAdapter;
             if (exists === false) {
                 // create table
                 const str1 = migration.add.filter( x => {
@@ -346,14 +352,16 @@ export class MemoryAdapter {
                         return format('"%f" %t', x);
                     }).join(', ');
                 const sql = `CREATE TABLE "${migration.appliesTo}" (${str1})`;
-                // execute create
-                await self.executeAsync(sql);
+                // execute create with a clone of current adapter in order to execute CREATE TABLE out of transaction
+                clonedAdapter = new MemoryAdapter(self.options);
+                await clonedAdapter.executeAsync(sql);
                 // set updated to false
                 migration.updated = false;
             }
             else {
-                // get table columns
-                const columns = await self.table(migration.appliesTo).columnsAsync();
+                clonedAdapter = new MemoryAdapter(self.options);
+                // get table columns (use clone adapter)
+                const columns = await clonedAdapter.table(migration.appliesTo).columnsAsync();
                 let forceAlter = false;
                 let newType;
                 let oldType;
@@ -459,21 +467,24 @@ export class MemoryAdapter {
                 }
                 // set updated to false
                 migration.updated = (expressions.length === 0);
-                // execute expressions
+                // execute expressions (with clone adapter)
                 if (expressions.length) {
                     for (let i = 0; i < expressions.length; i++) {
                         const expression = migration[i];
-                        await self.executeAsync(expression);
+                        await clonedAdapter.executeAsync(expression);
                     }
                 }
             }
-            // finally do update version
-            await self.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
+            // finally do update version (with clone adapter)
+            await clonedAdapter.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
                 migration.appliesTo,
                 migration.model,
                 migration.version,
                 migration.description
             ]);
+            // close clone adapter
+            await clonedAdapter.closeAsync();
+            clonedAdapter = null;
 
         })().then(() => {
             return callback();
