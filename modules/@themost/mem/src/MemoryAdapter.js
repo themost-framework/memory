@@ -232,16 +232,20 @@ export class MemoryAdapter {
                 transactionFunc.call(self, (err) => {
                     if (err) {
                         //rollback transaction
-                        self.execute('ROLLBACK;', null, (err) => {
+                        self.execute('ROLLBACK;', null, rollbackError => {
+                            if (rollbackError) {
+                                TraceUtils.error(`An error occurred while transaction being rolled back.`);
+                                TraceUtils.error(rollbackError);
+                            }
                             self.transaction = null;
                             return callback(err);
                         });
                     }
                     else {
                         //commit transaction
-                        self.execute('COMMIT;', null, (err) => {
+                        self.execute('COMMIT;', null, commitError => {
                             self.transaction = null;
-                            return callback(err);
+                            return callback(commitError);
                         });
                     }
                 });
@@ -321,7 +325,7 @@ export class MemoryAdapter {
             let exists = await self.table('migrations').existsAsync();
             if (exists === false) {
                 // create table `migrations`
-                await self.executeAsync('CREATE TABLE migrations("id" INTEGER PRIMARY KEY AUTOINCREMENT, ' +
+                await self.executeAsync('CREATE TABLE "migrations" ("id" INTEGER PRIMARY KEY AUTOINCREMENT, ' +
                     '"appliesTo" TEXT NOT NULL, "model" TEXT NULL, "description" TEXT,"version" TEXT NOT NULL)')
             }
             // validate target version
@@ -469,7 +473,7 @@ export class MemoryAdapter {
                 }
             }
             // finally do update version (with clone adapter)
-            await self.executeAsync('INSERT INTO migrations("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
+            await self.executeAsync('INSERT INTO "migrations" ("appliesTo", "model", "version", "description") VALUES (?,?,?,?)', [
                 migration.appliesTo,
                 migration.model,
                 migration.version,
@@ -587,8 +591,10 @@ export class MemoryAdapter {
              * @param {ExistsCallback} callback
              */
             exists:function(callback) {
-                self.execute('SELECT COUNT(*) count FROM sqlite_master WHERE name=? AND type=\'table\';', [name], function(err, result) {
-                    if (err) { callback(err); return; }
+                self.execute(`SELECT COUNT(*) AS "count" FROM "sqlite_master" WHERE "name" = ? AND "type" = 'table';`, [ name ], (err, result) => {
+                    if (err) {
+                        return callback(err);
+                    }
                     callback(null, (result[0].count>0));
                 });
             },
@@ -596,8 +602,9 @@ export class MemoryAdapter {
              * @returns {Promise<boolean>}
              */
             existsAsync() {
+                const thisArg = this;
                 return new Promise((resolve, reject) => {
-                    return this.exists((error, result) => {
+                    return thisArg.exists((error, result) => {
                         if (error) {
                             return reject(error);
                         }
@@ -609,7 +616,7 @@ export class MemoryAdapter {
              * @param {VersionCallback} callback
              */
             version:function(callback) {
-                self.execute('SELECT MAX(version) AS version FROM migrations WHERE appliesTo=?',
+                self.execute(`SELECT MAX("version") AS "version" FROM "migrations" WHERE "appliesTo" = ?`,
                     [name], function(err, result) {
                         if (err) { return callback(err); }
                         if (result.length === 0)
@@ -622,8 +629,9 @@ export class MemoryAdapter {
              * @returns {Promise<string>}
              */
             versionAsync() {
+                const thisArg = this;
                 return new Promise((resolve, reject) => {
-                    return this.version((error, result) => {
+                    return thisArg.version((error, result) => {
                         if (error) {
                             return reject(error);
                         }
@@ -636,7 +644,7 @@ export class MemoryAdapter {
              */
             hasSequence:function(callback) {
                 callback = callback || function() {};
-                self.execute('SELECT COUNT(*) count FROM sqlite_sequence WHERE name=?',
+                self.execute(`SELECT COUNT(*) AS "count" FROM "sqlite_sequence" WHERE "name" = ?`,
                     [name], function(err, result) {
                         if (err) {
                             return callback(err);
@@ -648,8 +656,9 @@ export class MemoryAdapter {
              * @returns {Promise<boolean>}
              */
             hasSequenceAsync() {
+                const thisArg = this;
                 return new Promise((resolve, reject) => {
-                    return this.hasSequence((error, result) => {
+                    return thisArg.hasSequence((error, result) => {
                         if (error) {
                             return reject(error);
                         }
@@ -817,7 +826,7 @@ export class MemoryAdapter {
      * Executes a query against the underlying database
      * @param {*} query
      * @param {Array<*>=} values
-     * @param {function(*=): void} callback
+     * @param {AdapterExecuteCallback} callback
      */
     execute(query, values, callback) {
         const self = this;
@@ -846,12 +855,13 @@ export class MemoryAdapter {
                     callback.call(self, err);
                 }
                 else {
-                    //log statement (optional)
-                    if (process.env.NODE_ENV==='development')
-                        TraceUtils.log(`SQL:${sql}, Parameters:${JSON.stringify(values)}`);
 
                     //prepare statement - the traditional way
                     const prepared = self.prepare(sql, values);
+                    //log statement (optional)
+                    if (process.env.NODE_ENV==='development') {
+                        TraceUtils.log(`SQL:${prepared}, Parameters:${JSON.stringify(values)}`);
+                    }
                     let results;
                     let result = [];
                     //validate statement
@@ -889,6 +899,7 @@ export class MemoryAdapter {
                             return callback(null, result);
                         }
                         catch (err) {
+                            TraceUtils.error(`SQL: ${prepared}`);
                             return callback(err);
                         }
                     }
@@ -899,6 +910,7 @@ export class MemoryAdapter {
                             return callback();
                         }
                         catch (err) {
+                            TraceUtils.error(`SQL: ${prepared}`);
                             return callback(err);
                         }
 
@@ -919,8 +931,9 @@ export class MemoryAdapter {
      * @returns {Promise<*>}
      */
     executeAsync(query, values) {
+        const thisArg = this;
         return new Promise((resolve, reject) => {
-            return this.execute(query, values, (err, result) => {
+            return thisArg.execute(query, values, (err, result) => {
                 if (err) {
                     return reject(err);
                 }
