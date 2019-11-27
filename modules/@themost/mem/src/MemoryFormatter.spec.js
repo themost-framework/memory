@@ -16,7 +16,7 @@ describe('MemoryFormatter', () => {
      */
     let configuration;
     /**
-     * @type NamedDataContext
+     * @type DefaultDataContext
      */
     let context;
     beforeAll(() => {

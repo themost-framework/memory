@@ -6,10 +6,10 @@
  * found in the LICENSE file at https://themost.io/license
  */
 declare interface AdapterExecuteCallback {
-    ( error?: Error, result?: any ) : void;
+    ( error?: any, result?: any ) : void;
 }
 declare interface TransactionFunctionCallback {
-    ( error?: Error ) : void;
+    ( error?: any ) : void;
 }
 
 declare interface TransactionFunction {
@@ -17,19 +17,19 @@ declare interface TransactionFunction {
 }
 
 declare interface ExistsCallback {
-    ( error?: Error, result?: boolean ) : void;
+    ( error?: any, result?: boolean ) : void;
 }
 
 declare interface HasSequenceCallback {
-    ( error?: Error, result?: boolean ) : void;
+    ( error?: any, result?: boolean ) : void;
 }
 
 declare interface ColumnsCallback {
-    ( error?: Error, result?: Array<MemoryAdapterColumn> ) : void;
+    ( error?: any, result?: Array<MemoryAdapterColumn> ) : void;
 }
 
 declare interface VersionCallback {
-    ( error?: Error, result?: string ) : void;
+    ( error?: any, result?: string ) : void;
 }
 
 declare interface MemoryAdapterColumn {
