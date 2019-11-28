@@ -104,7 +104,12 @@ describe('MemoryFormatter', () => {
             PostalCode: 'S81 2FY',
             Country: 'England'
         };
-        expectAsync(model.silent().insert(item)).toBeRejected();
+        try {
+            await model.silent().save(item);
+        }
+        catch(err) {
+            expect(err).toBeTruthy();
+        }
         item = await model.where('ContactName').equal('Gavin McDonald').silent().getItem();
         expect(item).toBeFalsy();
     });
@@ -118,7 +123,7 @@ describe('MemoryFormatter', () => {
             PostalCode: 'S81 2FY',
             Country: 'England'
         };
-        await context.model('Customers').silent().insert(newCustomer);
+        await context.model('Customers').silent().save(newCustomer);
 
         const newOrder = {
             Customer: newCustomer,
@@ -264,6 +269,12 @@ describe('MemoryFormatter', () => {
     });
 
     it('should use DataModel.select()', async () => {
+        // prepare customers
+        const customersModel = context.model('Customer');
+        await promisify(customersModel.migrate).bind(customersModel)();
+        // prepare shippers
+        const shipperModel = context.model('Shipper');
+        await promisify(shipperModel.migrate).bind(shipperModel)();
 
         let order = await context.model('Orders')
             .where('OrderID').equal(10248)

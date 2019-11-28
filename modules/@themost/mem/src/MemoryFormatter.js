@@ -36,7 +36,7 @@ function zeroPad(number, length) {
 export class MemoryFormatter extends SqlFormatter {
 
     static get NAME_FORMAT() {
-        return '`$1`'
+        return '"$1"'
     }
 
     /**
