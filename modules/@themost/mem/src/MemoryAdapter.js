@@ -224,6 +224,13 @@ export class MemoryAdapter {
             // begin transaction
             return self.execute('BEGIN TRANSACTION;', null, (err) => {
                 if (err) {
+                    // sometimes something went wrong with transaction validation
+                    // so prevent error while starting a transaction by handling 'cannot start transaction' error
+                    // and continue
+                    if (err.message === 'cannot start a transaction within a transaction') {
+                        self.transaction = { };
+                        return callback();
+                    }
                     return callback(err);
                 }
                 //initialize dummy transaction object (for future use)
