@@ -1,6 +1,6 @@
 {
   "name": "@themost/mem",
-  "version": "1.0.7",
+  "version": "1.0.8",
   "description": "MOST Web Framework Codename Blueshift in-memory data adapter",
   "main": "dist/themost_mem.js",
   "types": "dist/themost_mem.d.ts",
@@ -31,8 +31,7 @@
     "@themost/data": "^2.4.8",
     "@themost/xml": "^2.3.1"
   },
-  "devDependencies": {
-  },
+  "devDependencies": {},
   "dependencies": {
     "sql.js": "^1.0.1",
     "core-js": "^2.6.10"

@@ -480,7 +480,9 @@ export class MemoryAdapter {
                 migration.description
             ]);
         })().then(() => {
-            return callback();
+            setTimeout(()=> {
+                return callback();
+            }, 100);
         }).catch( err => {
             return callback(err);
         });
