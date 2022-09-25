@@ -24,10 +24,10 @@ class TestApplication extends DataApplication {
         super(cwd);
         const dataConfiguration = this.configuration.getStrategy(DataConfigurationStrategy);
         // add adapter type
-        const name = 'SQLite Memory Adapter';
+        const name = 'Data Memory Adapter';
         const invariantName = 'mem';
         Object.assign(dataConfiguration.adapterTypes, {
-            sqlite: {
+            mem: {
                 name,
                 invariantName,
                 createInstance
