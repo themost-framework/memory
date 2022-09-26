@@ -1,6 +1,6 @@
 {
   "name": "@themost/memory",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "MOST Web Framework in-memory data adapter",
   "scripts": {
     "test": "jest",
