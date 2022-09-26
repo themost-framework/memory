@@ -1,9 +1,11 @@
 // eslint-disable-next-line no-unused-vars
 import { DataApplication, DataConfigurationStrategy, DataCacheStrategy, DataContext } from '@themost/data';
 import { createInstance } from '../src';
+import fs from 'fs';
 
 const testConnectionOptions = {
-    'database': 'spec/db/local.db'
+    'database': 'spec/db/local.db',
+    'buffer': fs.readFileSync('spec/db/local.db')
 };
 
 

@@ -51,7 +51,13 @@ declare interface MemoryAdapterTable {
     versionAsync(): Promise<string>;
     hasSequence(callback: HasSequenceCallback): void;
     hasSequenceAsync(): Promise<boolean>;
-    indexes?: Array<MemoryAdapterTableIndex>
+    create(fields: Array<any>, callback: (err: Error) => void): void;
+    createAsync(fields: Array<any>): Promise<void>;
+    add(fields: Array<any>, callback: (err: Error) => void): void;
+    addAsync(fields: Array<any>): Promise<void>;
+    change(fields: Array<any>, callback: (err: Error) => void): void;
+    changeAsync(fields: Array<any>): Promise<void>;
+    indexes?: Array<MemoryAdapterTableIndex>;
 }
 
 declare interface MemoryAdapterView {
@@ -59,8 +65,12 @@ declare interface MemoryAdapterView {
     existsAsync(): Promise<boolean>;
     drop(callback: AdapterExecuteCallback): void;
     dropAsync(): Promise<void>;
-    create(query: any, callback: AdapterExecuteCallback): void;
-    createAsync(query: any): Promise<void>;
+    create(fields: Array<any>, callback: (err: Error) => void): void;
+    createAsync(fields: Array<any>): Promise<void>;
+    add(fields: Array<any>, callback: (err: Error) => void): void;
+    addAsync(fields: Array<any>): Promise<void>;
+    change(fields: Array<any>, callback: (err: Error) => void): void;
+    changeAsync(fields: Array<any>): Promise<void>;
 }
 
 declare interface MemoryAdapterTableIndex {

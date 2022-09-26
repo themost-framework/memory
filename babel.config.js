@@ -1,17 +1,14 @@
-module.exports = function (api) {
-    api.cache(false);
-    return {
-        "presets": [
-            [
-                "@babel/preset-env",
-                {
-                    "targets": {
-                        "node": "current"
-                    }
+module.exports = {
+    "sourceMaps": true,
+    "retainLines": true,
+    "presets": [
+        [
+            '@babel/preset-env',
+            {
+                "targets": {
+                    "node": 'current'
                 }
-            ]
-        ],
-        "plugins": [
+            }
         ]
-    };
-};
+    ],
+};;

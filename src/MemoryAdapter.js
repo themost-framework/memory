@@ -30,7 +30,7 @@ export class MemoryAdapter {
         /**
          * @type {{database:string=,name: string=}}
          */
-        this.options = options || { name: 'memory' };
+        this.options = options || { name: 'memory-db' };
         /**
          * Represents the database raw connection associated with this adapter
          * @type {*}
@@ -62,7 +62,7 @@ export class MemoryAdapter {
             else {
                 self.options.name = self.options.name || 'memory-db';
                 // create database connection
-                self.rawConnection = new SQL.Database();
+                self.rawConnection = new SQL.Database(self.options.buffer);
                 TraceUtils.debug(`Database initialization for ${self.options.name} file=${self.rawConnection.filename} db=${self.rawConnection.db}`);
                 // set instance database
                 INSTANCE_DB.set(self.options.name, self.rawConnection);
@@ -134,7 +134,7 @@ export class MemoryAdapter {
      * @param {MemoryAdapterColumn} field
      * @returns {string}
      */
-    static formatType(field) {
+    formatType(field) {
         const size = parseInt(field.size);
         let s;
         switch (field.type)
@@ -199,6 +199,15 @@ export class MemoryAdapter {
         else {
             return s.concat((field.nullable===undefined) ? ' NULL': (field.nullable ? ' NULL': ' NOT NULL'));
         }
+    }
+
+    format(format, obj) {
+        let result = format;
+        if (/%t/.test(format))
+            result = result.replace(/%t/g, this.formatType(obj));
+        if (/%f/.test(format))
+            result = result.replace(/%f/g, obj.name);
+        return result;
     }
 
     /**
@@ -318,15 +327,6 @@ export class MemoryAdapter {
          * @type {MemoryAdapterMigration}
          */
         const migration = obj;
-        const format = function(format, obj)
-        {
-            let result = format;
-            if (/%t/.test(format))
-                result = result.replace(/%t/g,MemoryAdapter.formatType(obj));
-            if (/%f/.test(format))
-                result = result.replace(/%f/g,obj.name);
-            return result;
-        };
         (async function migrate() {
             // check if table `migrations`  exists or not
             let exists = await self.table('migrations').existsAsync();
@@ -355,7 +355,7 @@ export class MemoryAdapter {
                 const str1 = migration.add.filter( x => {
                     return !x['oneToMany'];
                 }).map( x => {
-                        return format('"%f" %t', x);
+                        return self.format('"%f" %t', x);
                     }).join(', ');
                 const sql = `CREATE TABLE "${migration.appliesTo}" (${str1})`;
                 // execute create with a clone of current adapter in order to execute CREATE TABLE out of transaction
@@ -411,7 +411,7 @@ export class MemoryAdapter {
                             if (column) {
                                 if (!column.primary) {
                                     // validate new column type (e.g. TEXT(120,0) NOT NULL)
-                                    newType = format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
+                                    newType = self.format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
                                     if ((newType !== oldType)) {
                                         //force alter
                                         forceAlter = true;
@@ -447,7 +447,7 @@ export class MemoryAdapter {
                                 i-=1;
                             }
                             else {
-                                newType = format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
+                                newType = self.format('%t', x); oldType = column.type.toUpperCase().concat(column.nullable ? ' NOT NULL' : ' NULL');
                                 if (newType === oldType) {
                                     //remove column from add collection
                                     migration.add.splice(i, 1);
@@ -465,7 +465,7 @@ export class MemoryAdapter {
                     else {
                         migration.add.forEach( x => {
                             //search for columns
-                            expressions.push(`ALTER TABLE "${migration.appliesTo}" ADD COLUMN "${x.name}" ${MemoryAdapter.formatType(x)}`);
+                            expressions.push(`ALTER TABLE "${migration.appliesTo}" ADD COLUMN "${x.name}" ${self.formatType(x)}`);
                         });
                     }
                 }
@@ -693,7 +693,7 @@ export class MemoryAdapter {
                                 name: x.name,
                                 ordinal: x.cid,
                                 type: x.type,
-                                nullable: (!!x.notnull),
+                                nullable: (!x.notnull),
                                 primary: (x.pk === 1)
                             };
                             const matches = /(\w+)\((\d+),(\d+)\)/.exec(x.type);
@@ -722,6 +722,93 @@ export class MemoryAdapter {
                     });
                 });
             },
+            /**
+             * 
+             * @param {Array<*>} fields 
+             * @param {Function} callback 
+             */
+             create: function(fields, callback) {
+                //create table
+                const strFields = fields.filter(function (x) {
+                    return !x.oneToMany;
+                }).map(function (x) {
+                    return self.format('"%f" %t', x);
+                }).join(', ');
+                const formatter = new MemoryFormatter();
+                const escapedTable = formatter.escapeName(name);
+                const sql = `CREATE TABLE ${escapedTable} (${strFields})`;
+                self.execute(sql, null, function (err) {
+                    if (err) {
+                        return callback(err);
+                    }
+                    return callback();
+                });
+            },
+            createAsync: function(fields) {
+                return new Promise((resolve, reject) => {
+                    this.create(fields, (err, res) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        return resolve(res);
+                    });
+                });
+            },
+            /**
+             * Alters the table by adding an array of fields
+             * @param {Array<*>} fields
+             * @param callback
+             */
+             add: function (fields, callback) {
+                callback = callback || function () { };
+                fields = fields || [];
+                if (Array.isArray(fields) === false) {
+                    //invalid argument exception
+                    return callback(new Error('Invalid argument type. Expected Array.'));
+                }
+                if (fields.length === 0) {
+                    // do nothing
+                    return callback();
+                }
+                // generate SQL statement
+                const formatter = new MemoryFormatter();
+                const escapedTable = formatter.escapeName(name);
+                const sql = fields.map((field) => {
+                    const escapedField = formatter.escapeName(field.name);
+                    return `ALTER TABLE ${escapedTable} ADD COLUMN ${escapedField} ${self.formatType(field)}`;
+                }).join(';');
+                self.execute(sql, [], function (err) {
+                    callback(err);
+                });
+            },
+            addAsync: function (fields) {
+                return new Promise((resolve, reject) => {
+                    this.add(fields, (err, res) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        return resolve(res);
+                    });
+                });
+            },
+            /**
+             * Alters the table by modifying an array of fields
+             * @param {Array<*>} fields
+             * @param callback
+             */
+            change: function (fields, callback) {
+                return callback(new Error('Full table migration is not yet implemented.'));
+            },
+            changeAsync: function (fields) {
+                return new Promise((resolve, reject) => {
+                    this.change(fields, (err, res) => {
+                        if (err) {
+                            return reject(err);
+                        }
+                        return resolve(res);
+                    });
+                });
+            }
         };
 
     }
