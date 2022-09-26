@@ -9,8 +9,8 @@ import initSqlJs from 'sql.js';
 import {SqlUtils, QueryExpression, QueryField} from '@themost/query';
 import {MemoryFormatter} from './MemoryFormatter';
 import Debug from 'debug';
-const debug = Debug('themost-framework:debug');
-const error = Debug('themost-framework:error');
+const debug = Debug('@themost:debug');
+const error = Debug('@themost:error');
 
 const INSTANCE_DB = new Map();
 const DateTimeRegex = /^\d{4}-([0]\d|1[0-2])-([0-2]\d|3[01])(?:[T ](\d+):(\d+)(?::(\d+)(?:\.(\d+))?)?)(?:Z(-?\d*))?([+-](\d+):(\d+))?$/;
