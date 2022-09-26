@@ -1,0 +1,10 @@
+process.env.DEBUG = process.env.DEBUG || '@themost:*';
+Object.assign(global.console, {
+    // uncomment to ignore a specific log level
+    // eslint-disable-next-line no-undef
+    log: jest.fn(),
+    // debug: jest.fn(),
+    // info: jest.fn(),
+    // warn: jest.fn(),
+    // error: jest.fn(),
+})
