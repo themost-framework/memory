@@ -2,6 +2,9 @@
   "name": "@themost/memory",
   "version": "1.0.1",
   "description": "MOST Web Framework in-memory data adapter",
+  "main": "dist/index.js",
+  "module": "dist/index.esm.js",
+  "types": "dist/index.d.ts",
   "scripts": {
     "test": "jest",
     "build": "rimraf dist && rollup --config rollup.config.js"
