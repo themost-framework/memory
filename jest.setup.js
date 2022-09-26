@@ -1,3 +1,4 @@
+process.env.DEBUG = process.env.DEBUG || 'themost-framework:*';
 Object.assign(global.console, {
     // uncomment to ignore a specific log level
     // eslint-disable-next-line no-undef

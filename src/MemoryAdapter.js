@@ -8,7 +8,9 @@
 import initSqlJs from 'sql.js';
 import {SqlUtils, QueryExpression, QueryField} from '@themost/query';
 import {MemoryFormatter} from './MemoryFormatter';
-import {TraceUtils} from '@themost/common';
+import Debug from 'debug';
+const debug = Debug('themost-framework:debug');
+const error = Debug('themost-framework:error');
 
 const INSTANCE_DB = new Map();
 const DateTimeRegex = /^\d{4}-([0]\d|1[0-2])-([0-2]\d|3[01])(?:[T ](\d+):(\d+)(?::(\d+)(?:\.(\d+))?)?)(?:Z(-?\d*))?([+-](\d+):(\d+))?$/;
@@ -63,7 +65,7 @@ export class MemoryAdapter {
                 self.options.name = self.options.name || 'memory-db';
                 // create database connection
                 self.rawConnection = new SQL.Database(self.options.buffer);
-                TraceUtils.debug(`Database initialization for ${self.options.name} file=${self.rawConnection.filename} db=${self.rawConnection.db}`);
+                debug(`Database initialization for ${self.options.name} file=${self.rawConnection.filename} db=${self.rawConnection.db}`);
                 // set instance database
                 INSTANCE_DB.set(self.options.name, self.rawConnection);
             }
@@ -250,8 +252,8 @@ export class MemoryAdapter {
                         //rollback transaction
                         self.execute('ROLLBACK;', null, (rollbackError) => {
                             if (rollbackError) {
-                                TraceUtils.error(`An error occurred while transaction being rolled back.`);
-                                TraceUtils.error(rollbackError);
+                                error(`An error occurred while transaction being rolled back.`);
+                                error(rollbackError);
                             }
                             self.transaction = null;
                             return callback(err);
@@ -955,9 +957,7 @@ export class MemoryAdapter {
                     //prepare statement - the traditional way
                     const prepared = self.prepare(sql, values);
                     //log statement (optional)
-                    if (process.env.NODE_ENV==='development') {
-                        TraceUtils.log(`SQL:${prepared}, Parameters:${JSON.stringify(values)}`);
-                    }
+                    debug(`SQL:${prepared}, Parameters:${JSON.stringify(values)}`);
                     let results;
                     let result = [];
                     //validate statement
@@ -995,7 +995,7 @@ export class MemoryAdapter {
                             return callback(null, result);
                         }
                         catch (err) {
-                            TraceUtils.error(`SQL: ${prepared}`);
+                            error(`SQL: ${prepared}`);
                             return callback(err);
                         }
                     }
@@ -1006,7 +1006,7 @@ export class MemoryAdapter {
                             return callback();
                         }
                         catch (err) {
-                            TraceUtils.error(`SQL: ${prepared}`);
+                            error(`SQL: ${prepared}`);
                             return callback(err);
                         }
 
